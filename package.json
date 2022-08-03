@@ -1,0 +1,19 @@
+{
+  "name": "hapi_objection_crud",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon ./routes/route.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/hapi": "^20.2.2",
+    "joi": "^17.6.0",
+    "knex": "^2.2.0",
+    "mysql": "^2.18.1",
+    "objection": "^2.2.15"
+  }
+}
