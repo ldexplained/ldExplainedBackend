@@ -10,9 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@hapi/hapi": "^20.2.2",
+    "@hapi/hapi": "^20.3.0",
+    "@hapi/inert": "^7.1.0",
+    "@hapi/vision": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "hapi-swagger": "^17.2.1",
     "joi": "^17.6.0",
-    "knex": "^2.2.0",
+    "knex": "^2.5.1",
     "mysql": "^2.18.1",
     "objection": "^2.2.15"
   }

@@ -1,13 +1,17 @@
+require('dotenv').config()
 
-module.exports = {
-
-  development: {
-    client: 'mysql',
-    connection: {
-      host: 'localhost',
-      user: 'root',
-      database: 'crud_with_hapi',
-      password: 'Aadarsh@21'
+const knexfile = {
+    development: {
+        client: 'mysql',
+        connection: {
+            host: 'localhost',
+            user: 'root',
+            database: process.env.database,
+            password: process.env.password
+        },
     }
-  },
 };
+
+module.exports = knexfile;
+
+

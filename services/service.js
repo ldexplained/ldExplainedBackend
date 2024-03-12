@@ -1,66 +1,453 @@
 const { Model } = require('objection')
-const UserModel = require('../models/user')
+const Doctors = require('../models/doctors')
+const DoctorsDegree = require('../models/doctorsDegree')
+const DoctorsAward = require('../models/doctorsAward')
+const DoctorsService = require('../models/doctorsServices')
+const DoctorsSpecialization = require('../models/doctorsSpecialization')
+const DoctorsExperience = require('../models/doctorsExperience')
+const DoctorsClinic = require('../models/doctorsClinic')
+const DoctorsClinicImages = require('../models/doctorsClinicImages')
+const DoctorsClinicIds = require('../models/doctorsClinicIds');
+const DoctorsBookingSlot = require('../models/doctorsBookingSlots');
+const User = require('../models/parentUsers');
+const Child = require('../models/children');
+const FavouriteDoctors = require('../models/favouriteDoctors');
 
-module.exports = class Demo_services extends Model {
 
-    // Create Data
-    createDataFun = async (req, h) => {
-        // console.log(req.payload);            
-        const { name, email, password } = req.payload;
+module.exports = class DoctorsServices extends Model {
 
+    // -------------------DOCTORS SERVICES-----------------------------------------------------
+    async createDoctors(doctorDetails) {
         try {
-            await UserModel.query().insert({
-                name,
-                email,
-                password
-            })
-            return h.response('User signup succefully');
+            let checkdoctor = await Doctors.query().where('name', doctorDetails.name);
+            if (checkdoctor.length > 0) {
+                return `Doctor already exists with this ${doctorDetails.name}. Please try with another name`
+            }
+            const data = await Doctors.query().insert(doctorDetails);
+            return data;
+        }
+        catch (error) {
+            console.log(error);
+            return error;
+        }
+    }
+
+    async createDoctorDegree(degreeDetails) {
+        degreeDetails['start_date'] = degreeDetails.degree_start_date;
+        degreeDetails['end_date'] = degreeDetails.degree_end_date;
+        delete degreeDetails.degree_start_date;
+        delete degreeDetails.degree_end_date;
+        try {
+            const data = await DoctorsDegree.query().insert(degreeDetails);
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    async createDoctorAward(award) {
+        award['date'] = award.award_date;
+        delete award.award_date;
+        try {
+            const data = await DoctorsAward.query().insert(award);
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    async createDoctorService(service) {
+        try {
+            const { dr_id, service_name } = service;
+            const jsonString = JSON.stringify(service_name);
+    
+            const data = await DoctorsService.query().insert({ dr_id, service_name: jsonString });
+            return data;
         } catch (error) {
-            // console.log(error)
-            return h.response('Duplicate error are not allowed');
+            return error;
+        }
+    }
+    
+    
+
+    // create a function with name createDoctorSpecialization(specialization);
+    async createDoctorSpecialization(specializations) {
+        try {
+            const { dr_id, specialization } = specializations;
+            const jsonString = JSON.stringify(specialization);
+            const data = await DoctorsSpecialization.query().insert({ dr_id, specialization: jsonString });
+    
+            return data;
+        } catch (error) {
+            return error;
+        }
+    }
+    
+
+    // create a function with name createDoctorExperience(experience);
+    async createDoctorExperience(experience) {
+        experience['start_date'] = experience.exp_start_date;
+        experience['end_date'] = experience.exp_end_date;
+        delete experience.exp_start_date;
+        delete experience.exp_end_date;
+        try {
+            const data = await DoctorsExperience.query().insert(experience);
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    
+    async createDoctorClinic(clinicDetails) {
+        delete clinicDetails.clinic_images_link;
+        try {
+            const data = await DoctorsClinic.query().insert(clinicDetails);
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    async createClinicImages(clinicImages, dr_id, clinic_id) {
+        try {
+            const { clinic_images_link } = clinicImages;
+            const jsonString = JSON.stringify(clinic_images_link);
+            const data = await DoctorsClinicImages.query().insert({ clinic_id, clinic_images_link: jsonString });
+            await DoctorsClinicIds.query().insert({ dr_id, clinic_id });
+            return data;
+        }
+        catch (error) {
+            return error;
         }
     }
 
 
-    // Read data by ID
-    ReadData = async (req, h) => {
+    // GET API
+    async getDoctorByName(gender, specialization) {
         try {
-            const data = await UserModel.query()
-                .select("*").from('hapi')
-                .where('id', req.params.id);
-            return h.response(data)
-        } catch (error) {
-            return h.response('data  is not present')
+            // return data for gender and specialization.
+            if (gender !== undefined && gender !== null && specialization !== undefined && specialization !== null) {
+                let drSpe = await DoctorsSpecialization.query().where('specialization', specialization);
+                let drIds = drSpe.map((dr) => dr.dr_id);
+                const data = await Doctors.query()
+                    .where('gender', gender)
+                    .whereIn('id', drIds)
+                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
+
+                if (data.length === 0) {
+                    return []; // Return empty array if no data found
+                }
+
+                let finalData = [];
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                    finalData.push({ ...dr, clinic, clinicImages });
+                }
+                return finalData;
+            }
+
+            // return data for specialization.
+            else if(specialization !== undefined && specialization !== null) {
+                let drSpe = await DoctorsSpecialization.query().where('specialization', specialization);
+                let drIds = drSpe.map((dr) => dr.dr_id);
+                const data = await Doctors.query()
+                    .whereIn('id', drIds)
+                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
+
+                if (data.length === 0) {
+                    return []; // Return empty array if no data found
+                }
+
+                let finalData = [];
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                    finalData.push({ ...dr, clinic, clinicImages });
+                }
+                return finalData;
+            }
+
+
+            // return data for gender.
+            else if (gender !== undefined && gender !== null) {
+                const data = await Doctors.query()
+                    .where('gender', gender)
+                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
+
+                if (data.length === 0) {
+                    return []; // Return empty array if no data found
+                }
+
+                let finalData = [];
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                    finalData.push({ ...dr, clinic, clinicImages });
+                }
+                return finalData;
+            }
+
+        }
+        catch (error) {
+            return error;
         }
     }
 
-    // Update data by ID
-    UpdateData = async (req, h) => {
-        const { name, email, password } = req.payload;
+    async getDoctorById(id, key) {
+
         try {
-            const data = await UserModel.query()
-                .select('*').from('hapi')
-                .where('id', req.params.id).update({
-                    name,
-                    email,
-                    password
-                })
-                return h.response('Data is UPDATED')
-        } catch (error) {
-            return h.response('Data is NOT Updated')
+            const data = await Doctors.query().where('id', id).withGraphFetched('[degrees, awards, services, specialization, experience]');
+            if (data.length === 0) {
+                return [];
+            }
+            console.log(data, 'data')
+            let clinicDetails = await DoctorsClinicIds.query().where('dr_id', id);
+            let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+            let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+            let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+            // get only today date.
+            let today = new Date();
+            today = today.toISOString().split('T')[0];
+            if (key === 'today') {
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('appointment_date', today);
+                if (bookingSlots.length === 0) {
+                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    return data;
+                } else {
+                    for (let i = 0; i < bookingSlots.length; i++) {
+                        let user = await User.query().where('id', bookingSlots[i].parent_user_id);
+                        bookingSlots[i]['patient_name'] = user[0].name;
+                    }
+                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    return data;
+                }
+
+
+            } else if (key === 'upcoming') {
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('appointment_date', '>', today);
+                if (bookingSlots.length === 0) {
+                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    return data;
+                } else {
+                    for (let i = 0; i < bookingSlots.length; i++) {
+                        let user = await User.query().where('id', bookingSlots[i].parent_user_id);
+                        bookingSlots[i]['patient_name'] = user[0].name;
+                    }
+                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    return data;
+                }
+            }
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    // Delete Func
+    async deleteDoctorById(id) {
+        try {
+            const data = await Doctors.query().delete().where('id', id);
+            if (data !== 1) {
+                return {
+                    statusCode: 404,
+                    message: `No record found with id ${id}`
+                };
+            }
+            return {
+                statusCode: 200,
+                message: `Record deleted successfully with id ${id}`
+            };
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    // GetAll Func
+    // create a function with name getDoctorsDetails
+    async getDoctorsDetails() {
+        try {
+            const data = await Doctors.query().withGraphFetched('[degrees, awards, services, specialization, experience]');
+            if (data.length === 0) {
+                return []; // Return empty array if no data found
+            }
+
+            let finalData = [];
+            for (let dr of data) {
+                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                finalData.push({ ...dr, clinic, clinicImages });
+            }
+            return finalData;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    async BookingSlots(bookingDetails) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', bookingDetails.dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${bookingDetails.dr_id}`;
+            }
+
+            let checkUser = await User.query().where('id', bookingDetails.parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${bookingDetails.parent_user_id}`;
+            }
+
+            let checkChild = await Child.query().where('id', bookingDetails.child_id);
+            if (checkChild.length === 0) {
+                return `No Child found with id ${bookingDetails.child_id}`;
+            }
+
+            let checkRelation = await Child.query().where('id', bookingDetails.child_id).andWhere('user_id', bookingDetails.parent_user_id);
+            if (checkRelation.length === 0) {
+                return `No relation found between parent and child with id ${bookingDetails.parent_user_id} and ${bookingDetails.child_id}`;
+            }
+
+            const data = await DoctorsBookingSlot.query().insert(bookingDetails);
+            return data;
+        }
+        catch (error) {
+            console.log(error, 'error')
+            return error;
+        }
+    }
+
+    //add favourite doctor
+    async addFavouriteDoctor(addFavDetails) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', addFavDetails.dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${addFavDetails.dr_id}`;
+            }
+
+            let checkUser = await User.query().where('id', addFavDetails.parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${addFavDetails.parent_user_id}`;
+            }
+            let checkDoctorFav = await FavouriteDoctors.query().where('dr_id', addFavDetails.dr_id).andWhere('parent_user_id', addFavDetails.parent_user_id);
+            if (checkDoctorFav.length > 0) {
+                return `Doctor already exists in your favourite list`;
+            }
+            await FavouriteDoctors.query().insert(addFavDetails);
+            return [{
+                statusCode: 200,
+                message: 'Doctor added to your favourite list'
+            }];
+        }
+        catch (error) {
+            return error;
         }
     }
 
 
-    // DELETE DATA BY ID
-    DeleteData = async (req, h ) => {
+    async getFavouriteDoctors(parent_user_id) {
         try {
-            const data = await UserModel.query()
-            .select('*').from('hapi')
-            .where('id', req.params.id).delete();
-            return h.response('Your data is DELETED')
-        } catch (error) {
-            return h.response("data is NOT DELETED")
+            let checkUser = await User.query().where('id', parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${parent_user_id}`;
+            }
+
+            let drFav = await FavouriteDoctors.query().where('parent_user_id', parent_user_id);
+            if (drFav.length === 0) {
+                return [];
+            }
+            let drIds = drFav.map((dr) => dr.dr_id);
+
+            const data = await Doctors.query().whereIn('id', drIds).withGraphFetched('[degrees, awards, services, specialization, experience]');
+            if (data.length === 0) {
+                return []; // Return empty array if no data found
+            }
+            let finalData = [];
+            for (let dr of data) {
+                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                finalData.push({ ...dr, clinic, clinicImages });
+            }
+            return finalData;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+
+    // create a function with name removeFavouriteDoctor(removeFavDetails);
+    async removeFavouriteDoctor(removeFavDetails) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', removeFavDetails.dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${removeFavDetails.dr_id}`;
+            }
+
+            let checkUser = await User.query().where('id', removeFavDetails.parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${removeFavDetails.parent_user_id}`;
+            }
+
+            await FavouriteDoctors.query().delete().where('dr_id', removeFavDetails.dr_id).andWhere('parent_user_id', removeFavDetails.parent_user_id);
+            return [{
+                statusCode: 200,
+                message: 'Doctor removed from your favourite list'
+            }];
+        }
+        catch (error) {
+            return error;
+        }
+    }
+    // create a function with name getUpcomingBookingSlotsByParentUserId
+    async getUpcomingBookingSlotsByParentUserId(parent_user_id) {
+        try {
+            let checkUser = await User.query().where('id', parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${parent_user_id}`;
+            }
+
+            let today = new Date();
+            today = today.toISOString().split('T')[0];
+            const data = await DoctorsBookingSlot.query().where('parent_user_id', parent_user_id).andWhere('appointment_date', '>=', today);
+            if (data.length === 0) {
+                return [];
+            }
+            let finalData = [];
+            for (let dr of data) {
+                let doctor = await Doctors.query().where('id', dr.dr_id);
+                // let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.dr_id);
+                // let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+                // let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                // let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+                finalData.push({ ...dr, doctor});
+            }
+            return finalData;
+        }
+        catch (error) {
+            return error;
         }
     }
 }
