@@ -3,7 +3,7 @@ exports.up = async (knex) => {
         table.increments('id'),
             table.integer('dr_id').unsigned().notNullable().references('id').inTable('doctors').onDelete('CASCADE').onUpdate('CASCADE'),
             table.integer('parent_user_id'), //.unsigned().notNullable().references('id').inTable('tbl_users'), //.onDelete('CASCADE').onUpdate('CASCADE'),
-            table.integer('child_id').unsigned().notNullable().references('id').inTable('tbl_child'), //.onDelete('CASCADE').onUpdate('CASCADE'),
+            table.integer('child_id') //.unsigned().notNullable().references('id').inTable('tbl_child'), //.onDelete('CASCADE').onUpdate('CASCADE'),
             table.string('link'),
             table.date('booking_date'),
             table.date('appointment_date'),

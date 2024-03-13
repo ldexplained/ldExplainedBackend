@@ -1,11 +1,10 @@
 require('dotenv').config()
-
 const knexfile = {
     development: {
-        client: 'mysql',
+        client: 'pg',
         connection: {
             host: 'localhost',
-            user: 'root',
+            user: 'postgres',
             database: process.env.database,
             password: process.env.password
         },
@@ -13,5 +12,3 @@ const knexfile = {
 };
 
 module.exports = knexfile;
-
-

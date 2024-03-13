@@ -12,7 +12,7 @@ class DoctorsFeedback extends Model {
             id: Joi.number(),
             dr_id: Joi.number().integer().required(),
             feedback: Joi.string().max(1000).required(),
-            rating: Joi.number().integer().required(),
+            rating: Joi.number().min(0).max(5).required(),
             parent_user_id: Joi.number().integer().required(),
             date_time: Joi.date().required()
         });

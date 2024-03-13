@@ -305,3 +305,45 @@ server.route({
         }
     }
 });
+
+// Post rating api for parent in this api parent can give doc a rating and a comment (calculate the rating and insert it in the doc table as well). 
+server.route({
+    method: 'POST',
+    path: '/rating/parents',
+    options: {
+        description: 'Rate a doctor [fine]',
+        tags: ['api'],
+        validate: {
+            payload: Joi.object({
+                dr_id: Joi.number().required(),
+                feedback: Joi.string().required(),
+                rating: Joi.number().required(),
+                parent_user_id: Joi.number().required(),
+            })
+        },
+        handler: async (request, h) => {
+            const data = await doctorsService.ratingToDoctor(request.payload);
+            return h.response(data);
+        }
+    }
+});
+
+// Create get api for rating, in this api fetch data from Dr_feedback  by dr id and send the user details as well
+server.route({
+    method: 'GET',
+    path: '/rating/parents',
+    options: {
+        description: 'Get all Users details who gave ratings to a doctor by dr_id [fine]',
+        tags: ['api'],
+        validate: {
+            query: Joi.object({
+                dr_id: Joi.number().required()
+            })
+        },
+        handler: async (request, h) => {
+            const { dr_id } = request.query;
+            const data = await doctorsService.getRatingDetailsOfUsersByDoctorId(dr_id);
+            return h.response(data);
+        }
+    }
+});

@@ -12,6 +12,7 @@ const DoctorsBookingSlot = require('../models/doctorsBookingSlots');
 const User = require('../models/parentUsers');
 const Child = require('../models/children');
 const FavouriteDoctors = require('../models/favouriteDoctors');
+const DoctorsFeedback = require('../models/doctorsFeedback');
 
 
 module.exports = class DoctorsServices extends Model {
@@ -421,7 +422,6 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
-    // create a function with name getUpcomingBookingSlotsByParentUserId
     async getUpcomingBookingSlotsByParentUserId(parent_user_id) {
         try {
             let checkUser = await User.query().where('id', parent_user_id);
@@ -438,12 +438,79 @@ module.exports = class DoctorsServices extends Model {
             let finalData = [];
             for (let dr of data) {
                 let doctor = await Doctors.query().where('id', dr.dr_id);
-                // let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.dr_id);
-                // let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-                // let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                // let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
                 finalData.push({ ...dr, doctor});
             }
+            return finalData;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    async ratingToDoctor(ratingDetails) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', ratingDetails.dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${ratingDetails.dr_id}`;
+            }
+
+            let checkUser = await User.query().where('id', ratingDetails.parent_user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${ratingDetails.parent_user_id}`;
+            }
+
+            let checkBooking = await DoctorsBookingSlot.query().where('dr_id', ratingDetails.dr_id).andWhere('parent_user_id', ratingDetails.parent_user_id);
+            if (checkBooking.length === 0) {
+                return `No booking found with dr_id ${ratingDetails.dr_id} and parent_user_id ${ratingDetails.parent_user_id}`;
+            }
+
+            if (ratingDetails.rating < 0 || ratingDetails.rating > 5) {
+                return `Rating should be between 0 to 5`;
+            }
+
+            const insertedFeedback = await DoctorsFeedback.query().insert(ratingDetails);
+            
+            let drFeedback = await DoctorsFeedback.query().where('dr_id', ratingDetails.dr_id);
+            let totalParents = drFeedback.length;
+
+            let totalRating = 0;
+            for (let i = 0; i < drFeedback.length; i++) {
+                totalRating += drFeedback[i].rating;
+            }
+            let avgRating = totalRating / totalParents;
+            avgRating = avgRating.toFixed(1);
+
+            await Doctors.query().patchAndFetchById(ratingDetails.dr_id, { rating: avgRating });
+
+            return insertedFeedback;
+        }
+        catch (error) {
+            return error;
+        }
+    }
+
+    // getRatingDetailsOfUsersByDoctorId(dr_id)
+    async getRatingDetailsOfUsersByDoctorId(dr_id) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${dr_id}`;
+            }
+
+            let drFeedback = await DoctorsFeedback.query().where('dr_id', dr_id);
+            if (drFeedback.length === 0) {
+                return [];
+            }
+
+            let finalData = [];
+            finalData.push({...checkDoctor[0]});
+            let patientDetails = [];
+            for (let dr of drFeedback){
+                let patient_name = await User.query().select('name').where('id', dr.parent_user_id);
+                dr['patient_name'] = patient_name[0].name;
+                patientDetails.push(dr);
+            }
+            finalData.push({patientDetails});
             return finalData;
         }
         catch (error) {
