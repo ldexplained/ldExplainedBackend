@@ -5,10 +5,10 @@ const Vision = require('@hapi/vision');
 const HapiSwagger = require('hapi-swagger');
 const knexConfig = require('../knexfile');
 const knex = require('knex')(knexConfig.development);
+require('dotenv').config()
 
 const server = Hapi.server({
-  port: 3000,
-  host: 'localhost'
+  port: process.env.PORT || 3000,
 });
 
 const init = async () => {

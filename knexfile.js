@@ -3,10 +3,10 @@ const knexfile = {
     development: {
         client: 'pg',
         connection: {
-            host: 'localhost',
-            user: 'postgres',
+            host: process.env.HOST || 'localhost',
+            user: process.env.user || 'postgres',
             database: process.env.database,
-            password: process.env.password
+            password: process.env.password,
         },
     }
 };
