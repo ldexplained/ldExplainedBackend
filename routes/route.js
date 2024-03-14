@@ -2,6 +2,7 @@ const { server } = require('../config/server');
 const DoctorsServices = require('../services/service');
 const doctorsService = new DoctorsServices();
 const Joi = require('joi');
+const logger = require('../config/logger');
 
 
 // -------------------DOCTORS Routes-----------------------------------------------------
@@ -114,6 +115,7 @@ server.route({
                 await doctorsService.createDoctorService(serviceDetails);
                 await doctorsService.createDoctorSpecialization(specializationDetails);
             }
+            logger.info('Doctor created successfully');
             return h.response(data);
         }
     }
@@ -136,6 +138,7 @@ server.route({
         handler: async (request, h) => {
             const { id, gender, specialization } = request.query;
             const data = await doctorsService.getDoctorByName(gender, specialization);
+            logger.info('Doctor details fetched successfully');
             return h.response(data);
         }
     }
@@ -156,8 +159,8 @@ server.route({
         },
         handler: async (request, h) => {
             const { dr_id, key } = request.query;
-            console.log(dr_id, key);
             const data = await doctorsService.getDoctorById(dr_id, key);
+            logger.info('Doctor details fetched successfully');
             return h.response(data);
         }
     }
@@ -177,12 +180,12 @@ server.route({
         handler: async (request, h) => {
             const { id } = request.params;
             const data = await doctorsService.deleteDoctorById(id);
+            logger.info('Doctor deleted successfully');
             return h.response(data);
         }
     }
 });
 
-// create a get all API for doctors
 server.route({
     method: 'GET',
     path: '/doctors/getDoctorsDetails',
@@ -191,12 +194,12 @@ server.route({
         tags: ['api'],
         handler: async (request, h) => {
             const data = await doctorsService.getDoctorsDetails();
+            logger.info('All doctors details fetched successfully');
             return h.response(data);
         }
     }
 });
 
-// create a post API for DoctorsBookingSlots
 server.route({
     method: 'POST',
     path: '/bookingSlots/parents',
@@ -221,12 +224,12 @@ server.route({
         },
         handler: async (request, h) => {
             const data = await doctorsService.BookingSlots(request.payload);
+            logger.info('Booking slot created successfully');
             return h.response(data);
         }
     }
 });
 
-// create a post API for FavouriteDoctors
 server.route({
     method: 'POST',
     path: '/favouriteDoctors/parents',
@@ -241,13 +244,13 @@ server.route({
         },
         handler: async (request, h) => {
             const data = await doctorsService.addFavouriteDoctor(request.payload);
+            logger.info('Doctor added to favourite list successfully');
             return h.response(data);
         }
     }
 });
 
 
-// create a get API for FavouriteDoctors
 server.route({
     method: 'GET',
     path: '/favouriteDoctors/parents',
@@ -262,12 +265,12 @@ server.route({
         handler: async (request, h) => {
             const { parent_user_id } = request.query;
             const data = await doctorsService.getFavouriteDoctors(parent_user_id);
+            logger.info('Favourite doctors list fetched successfully');
             return h.response(data);
         }
     }
 });
 
-// create a delete API for FavouriteDoctors
 server.route({
     method: 'DELETE',
     path: '/favouriteDoctors/parents',
@@ -282,6 +285,7 @@ server.route({
         },
         handler: async (request, h) => {
             const data = await doctorsService.removeFavouriteDoctor(request.payload);
+            logger.info('Doctor removed from favourite list successfully');
             return h.response(data);
         }
     }
@@ -301,12 +305,12 @@ server.route({
         handler: async (request, h) => {
             const { parent_user_id } = request.query;
             const data = await doctorsService.getUpcomingBookingSlotsByParentUserId(parent_user_id);
+            logger.info('Upcoming booking slots fetched successfully');
             return h.response(data);
         }
     }
 });
 
-// Post rating api for parent in this api parent can give doc a rating and a comment (calculate the rating and insert it in the doc table as well). 
 server.route({
     method: 'POST',
     path: '/rating/parents',
@@ -323,12 +327,12 @@ server.route({
         },
         handler: async (request, h) => {
             const data = await doctorsService.ratingToDoctor(request.payload);
+            logger.info('Rating given to doctor successfully');
             return h.response(data);
         }
     }
 });
 
-// Create get api for rating, in this api fetch data from Dr_feedback  by dr id and send the user details as well
 server.route({
     method: 'GET',
     path: '/rating/parents',
@@ -343,6 +347,7 @@ server.route({
         handler: async (request, h) => {
             const { dr_id } = request.query;
             const data = await doctorsService.getRatingDetailsOfUsersByDoctorId(dr_id);
+            logger.info('Rating details fetched successfully');
             return h.response(data);
         }
     }

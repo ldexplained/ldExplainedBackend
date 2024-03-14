@@ -13,12 +13,15 @@
     "@hapi/hapi": "^20.3.0",
     "@hapi/inert": "^7.1.0",
     "@hapi/vision": "^7.0.3",
+    "config": "^3.3.11",
     "dotenv": "^16.4.5",
     "hapi-swagger": "^17.2.1",
     "joi": "^17.6.0",
     "knex": "^2.5.1",
     "mysql": "^2.18.1",
     "objection": "^2.2.15",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "winston": "^3.12.0",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }

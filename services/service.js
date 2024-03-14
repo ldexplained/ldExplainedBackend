@@ -13,6 +13,7 @@ const User = require('../models/parentUsers');
 const Child = require('../models/children');
 const FavouriteDoctors = require('../models/favouriteDoctors');
 const DoctorsFeedback = require('../models/doctorsFeedback');
+const logger = require('../config/logger');
 
 
 module.exports = class DoctorsServices extends Model {
@@ -28,7 +29,7 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
-            console.log(error);
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -43,6 +44,7 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -55,6 +57,7 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -67,13 +70,13 @@ module.exports = class DoctorsServices extends Model {
             const data = await DoctorsService.query().insert({ dr_id, service_name: jsonString });
             return data;
         } catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
     
     
 
-    // create a function with name createDoctorSpecialization(specialization);
     async createDoctorSpecialization(specializations) {
         try {
             const { dr_id, specialization } = specializations;
@@ -82,12 +85,12 @@ module.exports = class DoctorsServices extends Model {
     
             return data;
         } catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
     
-
-    // create a function with name createDoctorExperience(experience);
+    // Doctor Experince
     async createDoctorExperience(experience) {
         experience['start_date'] = experience.exp_start_date;
         experience['end_date'] = experience.exp_end_date;
@@ -98,6 +101,7 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -110,6 +114,7 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -123,12 +128,12 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
 
-    // GET API
     async getDoctorByName(gender, specialization) {
         try {
             // return data for gender and specialization.
@@ -141,7 +146,7 @@ module.exports = class DoctorsServices extends Model {
                     .withGraphFetched('[degrees, awards, services, specialization, experience]');
 
                 if (data.length === 0) {
-                    return []; // Return empty array if no data found
+                    return [];
                 }
 
                 let finalData = [];
@@ -165,7 +170,7 @@ module.exports = class DoctorsServices extends Model {
                     .withGraphFetched('[degrees, awards, services, specialization, experience]');
 
                 if (data.length === 0) {
-                    return []; // Return empty array if no data found
+                    return [];
                 }
 
                 let finalData = [];
@@ -188,7 +193,7 @@ module.exports = class DoctorsServices extends Model {
                     .withGraphFetched('[degrees, awards, services, specialization, experience]');
 
                 if (data.length === 0) {
-                    return []; // Return empty array if no data found
+                    return [];
                 }
 
                 let finalData = [];
@@ -205,6 +210,7 @@ module.exports = class DoctorsServices extends Model {
 
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -216,7 +222,6 @@ module.exports = class DoctorsServices extends Model {
             if (data.length === 0) {
                 return [];
             }
-            console.log(data, 'data')
             let clinicDetails = await DoctorsClinicIds.query().where('dr_id', id);
             let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
 
@@ -257,11 +262,11 @@ module.exports = class DoctorsServices extends Model {
             }
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
-    // Delete Func
     async deleteDoctorById(id) {
         try {
             const data = await Doctors.query().delete().where('id', id);
@@ -277,17 +282,16 @@ module.exports = class DoctorsServices extends Model {
             };
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
-    // GetAll Func
-    // create a function with name getDoctorsDetails
     async getDoctorsDetails() {
         try {
             const data = await Doctors.query().withGraphFetched('[degrees, awards, services, specialization, experience]');
             if (data.length === 0) {
-                return []; // Return empty array if no data found
+                return [];
             }
 
             let finalData = [];
@@ -302,6 +306,7 @@ module.exports = class DoctorsServices extends Model {
             return finalData;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -332,12 +337,11 @@ module.exports = class DoctorsServices extends Model {
             return data;
         }
         catch (error) {
-            console.log(error, 'error')
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
-    //add favourite doctor
     async addFavouriteDoctor(addFavDetails) {
         try {
             let checkDoctor = await Doctors.query().where('id', addFavDetails.dr_id);
@@ -360,6 +364,7 @@ module.exports = class DoctorsServices extends Model {
             }];
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -380,7 +385,7 @@ module.exports = class DoctorsServices extends Model {
 
             const data = await Doctors.query().whereIn('id', drIds).withGraphFetched('[degrees, awards, services, specialization, experience]');
             if (data.length === 0) {
-                return []; // Return empty array if no data found
+                return [];
             }
             let finalData = [];
             for (let dr of data) {
@@ -394,12 +399,12 @@ module.exports = class DoctorsServices extends Model {
             return finalData;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
 
-    // create a function with name removeFavouriteDoctor(removeFavDetails);
     async removeFavouriteDoctor(removeFavDetails) {
         try {
             let checkDoctor = await Doctors.query().where('id', removeFavDetails.dr_id);
@@ -419,6 +424,7 @@ module.exports = class DoctorsServices extends Model {
             }];
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -443,6 +449,7 @@ module.exports = class DoctorsServices extends Model {
             return finalData;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
@@ -485,11 +492,11 @@ module.exports = class DoctorsServices extends Model {
             return insertedFeedback;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
 
-    // getRatingDetailsOfUsersByDoctorId(dr_id)
     async getRatingDetailsOfUsersByDoctorId(dr_id) {
         try {
             let checkDoctor = await Doctors.query().where('id', dr_id);
@@ -514,6 +521,7 @@ module.exports = class DoctorsServices extends Model {
             return finalData;
         }
         catch (error) {
+            logger.error(JSON.stringify(error));
             return error;
         }
     }
