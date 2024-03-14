@@ -147,7 +147,7 @@ server.route({
 // create a get API for doctors by id
 server.route({
     method: 'GET',
-    path: '/doctors/{id}',
+    path: '/doctors/byId',
     options: {
         description: 'Get doctor by id and their booking patients  details [fine]',
         tags: ['api'],

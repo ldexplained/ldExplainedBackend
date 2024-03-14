@@ -11,6 +11,13 @@ const server = Hapi.server({
   port: process.env.PORT || 3000,
 });
 
+server.events.on('response', (request) => {
+  const logMessage = `${new Date().toISOString()} ${request.info.remoteAddress}: ${request.method.toUpperCase()} ${request.path} --> ${
+    request.response.statusCode
+  }`;
+  console.log(logMessage);
+});
+
 const init = async () => {
   await server.register([
     Inert,
