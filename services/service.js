@@ -66,7 +66,7 @@ module.exports = class DoctorsServices extends Model {
         try {
             const { dr_id, service_name } = service;
             const jsonString = JSON.stringify(service_name);
-    
+
             const data = await DoctorsService.query().insert({ dr_id, service_name: jsonString });
             return data;
         } catch (error) {
@@ -74,22 +74,22 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
-    
-    
+
+
 
     async createDoctorSpecialization(specializations) {
         try {
             const { dr_id, specialization } = specializations;
             const jsonString = JSON.stringify(specialization);
             const data = await DoctorsSpecialization.query().insert({ dr_id, specialization: jsonString });
-    
+
             return data;
         } catch (error) {
             logger.error(JSON.stringify(error));
             return error;
         }
     }
-    
+
     // Doctor Experince
     async createDoctorExperience(experience) {
         experience['start_date'] = experience.exp_start_date;
@@ -106,7 +106,7 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-    
+
     async createDoctorClinic(clinicDetails) {
         delete clinicDetails.clinic_images_link;
         try {
@@ -136,97 +136,82 @@ module.exports = class DoctorsServices extends Model {
 
     async getDoctorByName(gender, specialization) {
         try {
-            // return data for gender and specialization.
-            if (gender !== undefined && gender !== null && specialization !== undefined && specialization !== null) {
-                let drSpe = await DoctorsSpecialization.query().where('specialization', specialization);
-                let drIds = drSpe.map((dr) => dr.dr_id);
-                const data = await Doctors.query()
-                    .where('gender', gender)
-                    .whereIn('id', drIds)
-                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
+            let doctorsQuery = Doctors.query();
 
-                if (data.length === 0) {
-                    return [];
-                }
-
-                let finalData = [];
-                for (let dr of data) {
-                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-
-                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-                    finalData.push({ ...dr, clinic, clinicImages });
-                }
-                return finalData;
+            if (gender !== undefined && gender !== null) {
+                doctorsQuery = doctorsQuery.where('gender', gender);
             }
 
-            // return data for specialization.
-            else if(specialization !== undefined && specialization !== null) {
-                let drSpe = await DoctorsSpecialization.query().where('specialization', specialization);
-                let drIds = drSpe.map((dr) => dr.dr_id);
-                const data = await Doctors.query()
-                    .whereIn('id', drIds)
-                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
-
-                if (data.length === 0) {
-                    return [];
-                }
-
-                let finalData = [];
-                for (let dr of data) {
-                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-
-                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-                    finalData.push({ ...dr, clinic, clinicImages });
-                }
-                return finalData;
+            if (specialization !== undefined && specialization !== null) {
+                const drSpe = await DoctorsSpecialization.query().where('specialization', 'like', `%${specialization}%`);
+                const drIds = drSpe.map((dr) => dr.dr_id);
+                doctorsQuery = doctorsQuery.whereIn('id', drIds);
             }
 
+            const data = await doctorsQuery.withGraphFetched('[degrees, awards, services, specialization, experience]');
 
-            // return data for gender.
-            else if (gender !== undefined && gender !== null) {
-                const data = await Doctors.query()
-                    .where('gender', gender)
-                    .withGraphFetched('[degrees, awards, services, specialization, experience]');
-
-                if (data.length === 0) {
-                    return [];
-                }
-
-                let finalData = [];
-                for (let dr of data) {
-                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-
-                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-                    finalData.push({ ...dr, clinic, clinicImages });
-                }
-                return finalData;
+            if (data.length === 0) {
+                return [];
             }
 
-        }
-        catch (error) {
+            let finalData = [];
+            for (let dr of data) {
+                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                // parse clinic images link from stringified array to actual array
+                for (let i = 0; i < clinicImages.length; i++) {
+                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                }
+
+                let specialization = [];
+                for (let i = 0; i < dr.specialization.length; i++) {
+                    specialization.push(JSON.parse(dr.specialization[i].specialization));
+                }
+
+                let services = [];
+                for (let i = 0; i < dr.services.length; i++) {
+                    services.push(JSON.parse(dr.services[i].service_name));
+                }
+                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
+            }
+            return finalData;
+        } catch (error) {
             logger.error(JSON.stringify(error));
             return error;
         }
     }
 
-    async getDoctorById(id, key) {
 
+
+    async getDoctorById(id, key) {
         try {
             const data = await Doctors.query().where('id', id).withGraphFetched('[degrees, awards, services, specialization, experience]');
             if (data.length === 0) {
                 return [];
             }
+
+            for (let i = 0; i < data[0].specialization.length; i++) {
+                data[0].specialization[i].specialization = JSON.parse(data[0].specialization[i].specialization);
+            }
+
+            for (let i = 0; i < data[0].services.length; i++) {
+                data[0].services[i].service_name = JSON.parse(data[0].services[i].service_name);
+            }
+
             let clinicDetails = await DoctorsClinicIds.query().where('dr_id', id);
             let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
 
             let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
             let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+            for (let i = 0; i < clinicImages.length; i++) {
+                clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                clinicImages[i].clinicImagesLength = clinicImages[i].clinic_images_link.length;
+            }
 
             // get only today date.
             let today = new Date();
@@ -244,7 +229,6 @@ module.exports = class DoctorsServices extends Model {
                     data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
                     return data;
                 }
-
 
             } else if (key === 'upcoming') {
                 let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('appointment_date', '>', today);
@@ -298,10 +282,23 @@ module.exports = class DoctorsServices extends Model {
             for (let dr of data) {
                 let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
                 let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-
                 let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
                 let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-                finalData.push({ ...dr, clinic, clinicImages });
+
+                for (let i = 0; i < clinicImages.length; i++) {
+                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                }
+
+                let specialization = [];
+                for (let i = 0; i < dr.specialization.length; i++) {
+                    specialization.push(JSON.parse(dr.specialization[i].specialization));
+                }
+
+                let services = [];
+                for (let i = 0; i < dr.services.length; i++) {
+                    services.push(JSON.parse(dr.services[i].service_name));
+                }
+                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
             }
             return finalData;
         }
@@ -311,7 +308,7 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-    async BookingSlots(bookingDetails) {
+    async bookingSlots(bookingDetails) {
         try {
             let checkDoctor = await Doctors.query().where('id', bookingDetails.dr_id);
             if (checkDoctor.length === 0) {
@@ -394,7 +391,22 @@ module.exports = class DoctorsServices extends Model {
 
                 let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
                 let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-                finalData.push({ ...dr, clinic, clinicImages });
+
+                for (let i = 0; i < clinicImages.length; i++) {
+                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                }
+
+                let specialization = [];
+                for (let i = 0; i < dr.specialization.length; i++) {
+                    specialization.push(JSON.parse(dr.specialization[i].specialization));
+                }
+
+                let services = [];
+                for (let i = 0; i < dr.services.length; i++) {
+                    services.push(JSON.parse(dr.services[i].service_name));
+                }
+
+                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
             }
             return finalData;
         }
@@ -443,8 +455,10 @@ module.exports = class DoctorsServices extends Model {
             }
             let finalData = [];
             for (let dr of data) {
+                let patient_name = await User.query().select('name').where('id', dr.parent_user_id);
+                dr['patient_name'] = patient_name[0].name;
                 let doctor = await Doctors.query().where('id', dr.dr_id);
-                finalData.push({ ...dr, doctor});
+                finalData.push({ ...dr, doctor });
             }
             return finalData;
         }
@@ -476,7 +490,7 @@ module.exports = class DoctorsServices extends Model {
             }
 
             const insertedFeedback = await DoctorsFeedback.query().insert(ratingDetails);
-            
+
             let drFeedback = await DoctorsFeedback.query().where('dr_id', ratingDetails.dr_id);
             let totalParents = drFeedback.length;
 
@@ -510,14 +524,14 @@ module.exports = class DoctorsServices extends Model {
             }
 
             let finalData = [];
-            finalData.push({...checkDoctor[0]});
+            finalData.push({ ...checkDoctor[0] });
             let patientDetails = [];
-            for (let dr of drFeedback){
+            for (let dr of drFeedback) {
                 let patient_name = await User.query().select('name').where('id', dr.parent_user_id);
                 dr['patient_name'] = patient_name[0].name;
                 patientDetails.push(dr);
             }
-            finalData.push({patientDetails});
+            finalData.push({ patientDetails });
             return finalData;
         }
         catch (error) {
