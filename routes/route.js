@@ -10,7 +10,7 @@ server.route({
     method: 'POST',
     path: '/doctors/create',
     options: {
-        description: 'Create a new doctor [fine]',
+        description: 'Create a new doctor',
         tags: ['api'],
         validate: {
             payload: Joi.object({
@@ -149,7 +149,7 @@ server.route({
     method: 'GET',
     path: '/doctors/byId',
     options: {
-        description: 'Get doctor by id and their booking patients  details [fine]',
+        description: 'Get doctor by id and their booking patients  details',
         tags: ['api'],
         validate: {
             query: Joi.object({
@@ -170,7 +170,7 @@ server.route({
     method: 'DELETE',
     path: '/doctors/{id}',
     options: {
-        description: 'Delete doctor by id  [fine]',
+        description: 'Delete doctor by id',
         tags: ['api'],
         validate: {
             params: Joi.object({
@@ -190,7 +190,7 @@ server.route({
     method: 'GET',
     path: '/doctors/getDoctorsDetails',
     options: {
-        description: 'Get all doctors details [fine]',
+        description: 'Get all doctors details',
         tags: ['api'],
         handler: async (request, h) => {
             const data = await doctorsService.getDoctorsDetails();
@@ -204,7 +204,7 @@ server.route({
     method: 'POST',
     path: '/bookingSlots/parents',
     options: {
-        description: 'Create a new booking slot [fine]',
+        description: 'Create a new booking slot',
         tags: ['api'],
         validate: {
             payload: Joi.object({
@@ -214,8 +214,9 @@ server.route({
                 link: Joi.string().required(),
                 booking_date: Joi.date().required(),
                 appointment_date: Joi.date().required(),
-                start_time: Joi.date().required(),
-                end_time: Joi.date().required(),
+                // take time as 09:00:00
+                start_time: Joi.string().required(),
+                end_time: Joi.string().required(),
                 status: Joi.string().required(),
                 purpose: Joi.string().required(),
                 consulting_fee: Joi.number().required(),
@@ -223,7 +224,7 @@ server.route({
             })
         },
         handler: async (request, h) => {
-            const data = await doctorsService.BookingSlots(request.payload);
+            const data = await doctorsService.bookingSlots(request.payload);
             logger.info('Booking slot created successfully');
             return h.response(data);
         }
@@ -234,7 +235,7 @@ server.route({
     method: 'POST',
     path: '/favouriteDoctors/parents',
     options: {
-        description: 'Add doctor to your favourite list [fine]',
+        description: 'Add doctor to your favourite list',
         tags: ['api'],
         validate: {
             payload: Joi.object({
@@ -255,7 +256,7 @@ server.route({
     method: 'GET',
     path: '/favouriteDoctors/parents',
     options: {
-        description: 'Get all your favourite doctors list by parent_user_id [fine]',
+        description: 'Get all your favourite doctors list by parent_user_id',
         tags: ['api'],
         validate: {
             query: Joi.object({
@@ -275,7 +276,7 @@ server.route({
     method: 'DELETE',
     path: '/favouriteDoctors/parents',
     options: {
-        description: 'Remove doctor from your favourite list [fine]',
+        description: 'Remove doctor from your favourite list',
         tags: ['api'],
         validate: {
             payload: Joi.object({
@@ -295,7 +296,7 @@ server.route({
     method: 'GET',
     path: '/bookingSlots/parents',
     options: {
-        description: 'Get all upcoming booking slots of a doctor details by parent_user_id [fine]',
+        description: 'Get all upcoming booking slots of a doctor details by parent_user_id',
         tags: ['api'],
         validate: {
             query: Joi.object({
@@ -315,7 +316,7 @@ server.route({
     method: 'POST',
     path: '/rating/parents',
     options: {
-        description: 'Rate a doctor [fine]',
+        description: 'Rate a doctor',
         tags: ['api'],
         validate: {
             payload: Joi.object({
@@ -337,7 +338,7 @@ server.route({
     method: 'GET',
     path: '/rating/parents',
     options: {
-        description: 'Get all Users details who gave ratings to a doctor by dr_id [fine]',
+        description: 'Get all Users details who gave ratings to a doctor by dr_id',
         tags: ['api'],
         validate: {
             query: Joi.object({
