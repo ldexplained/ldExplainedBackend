@@ -23,6 +23,7 @@ class Doctors extends Model {
             consulting_fee: Joi.number().integer().required(),
             booking_fee: Joi.number().integer().required(),
             video_call_link: Joi.string(),
+            total_feedback: Joi.number().integer(),
         })
     }
 

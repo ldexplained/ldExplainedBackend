@@ -17,7 +17,6 @@ server.route({
                 // doctorDetails
                 name: Joi.string().required(),
                 location: Joi.string(),
-                rating: Joi.number(),
                 about_me: Joi.string(),
                 gender: Joi.string(),
                 address: Joi.string(),
@@ -64,8 +63,8 @@ server.route({
             })
         },
         handler: async (request, h) => {
-            const { name, location, rating, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link } = request.payload;
-            const drDetails = { name, location, rating, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link };
+            const { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link } = request.payload;
+            const drDetails = { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link };
 
             let data = await doctorsService.createDoctors(drDetails);
 
@@ -349,6 +348,62 @@ server.route({
             const { dr_id } = request.query;
             const data = await doctorsService.getRatingDetailsOfUsersByDoctorId(dr_id);
             logger.info('Rating details fetched successfully');
+            return h.response(data);
+        }
+    }
+});
+
+server.route({
+    method: 'POST',
+    path: '/children/parents',
+    options: {
+        description: 'Create a new child',
+        tags: ['api'],
+        validate: {
+            payload: Joi.object({
+                user_id: Joi.number().required(),
+                name: Joi.string().required(),
+                contact: Joi.string().required(),
+                email: Joi.string().email().required(),
+                age: Joi.number().required(),
+                gender: Joi.string().valid('M', 'F', 'T').required(),
+                child_class: Joi.string().max(30).required(),
+                address1: Joi.string().max(100).required(),
+                address2: Joi.string().max(100).required(),
+                city: Joi.string().max(50).required(),
+                state: Joi.string().max(50).required(),
+                pincode: Joi.string().max(10).required(),
+                country: Joi.string().max(50).required(),
+                dos: Joi.date().optional(),
+                status: Joi.string().valid('A', 'S').required(),
+                last_updated: Joi.date().required(),
+                dated: Joi.date().required(),
+            })
+        },
+        handler: async (request, h) => {
+            const data = await doctorsService.createChildren(request.payload);
+            logger.info('Child created successfully');
+            return h.response(data);
+        }
+    }
+
+});
+
+server.route({
+    method: 'GET',
+    path: '/children/parents',
+    options: {
+        description: 'Get all children details by parent_user_id',
+        tags: ['api'],
+        validate: {
+            query: Joi.object({
+                user_id: Joi.number().required()
+            })
+        },
+        handler: async (request, h) => {
+            const { user_id } = request.query;
+            const data = await doctorsService.getChildrenByParentUserId(user_id);
+            logger.info('Children details fetched successfully');
             return h.response(data);
         }
     }
