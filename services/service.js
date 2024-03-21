@@ -25,6 +25,8 @@ module.exports = class DoctorsServices extends Model {
             if (checkdoctor.length > 0) {
                 return `Doctor already exists with this ${doctorDetails.name}. Please try with another name`
             }
+            doctorDetails['rating'] = 0;
+            doctorDetails['total_feedback'] = 0;
             const data = await Doctors.query().insert(doctorDetails);
             return data;
         }
