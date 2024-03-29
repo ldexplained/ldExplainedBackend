@@ -1,8 +1,90 @@
-const { server } = require('../config/server');
 const DoctorsServices = require('../services/service');
 const doctorsService = new DoctorsServices();
 const Joi = require('joi');
 const logger = require('../config/logger');
+const { init, appEmitter } = require('../config/server'); // Adjust the path as needed
+
+init().catch(error => console.error('Failed to start the server:', error));
+
+appEmitter.on('ready', ({ server }) => {
+
+// -------------------Google login---------------------------------------------
+// create a get API for google for google for generating the AUTH URL
+server.route({
+    method: 'GET',
+    path: '/google',
+    options: {
+        description: 'Get google auth url',
+        tags: ['api'],
+        handler: async (request, h) => {
+            const url = await doctorsService.getGoogleAuthUrl();
+            logger.info('Google auth url generated successfully');
+            // console.log('url', url);
+            return h.response({ url });
+            // return h.redirect({url});
+        }
+    }
+});
+
+// now create a google redirect route and and set the code in the query parameter and set the credicentials
+server.route({
+    method: 'GET',
+    path: '/google/redirect',
+    options: {
+        description: 'Get google redirect url with code',
+        tags: ['api'],
+        handler: async (request, h) => {
+            const code = request.query.code;
+            // console.log('code', code)
+            const data = await doctorsService.getGoogleRedirectUrl(code);
+            logger.info('Google logged in successfully');
+            console.log(data, 'data data')
+            return h.response(data);
+
+
+        }
+    }
+});
+
+
+server.route({
+    method: 'POST',
+    path: '/appointments-schedule',
+    options: {
+        description: 'Schedule appointments with a doctor',
+        tags: ['api'],
+        auth: {
+            strategy: 'jwt',
+        },
+        validate: {
+            payload: Joi.object({
+                // parent_user_id: Joi.number().required(),
+                dr_id: Joi.number().required(),
+                child_id: Joi.number().required(),
+                purpose: Joi.string().required(),
+                appointments: Joi.array().items(
+                    Joi.object({
+                        start_time: Joi.string().isoDate().required(),
+                        end_time: Joi.string().isoDate().required()
+                    })
+                ).required()
+            })
+        },
+        handler: async (request, h) => {
+            let parent_user_id = request.auth.credentials.id;
+            request.payload['parent_user_id'] = parent_user_id;
+            console.log(request.auth.credentials, 'request.auth.credentials')
+            try {
+                const result = await doctorsService.scheduleAppointments(request.payload);
+                logger.info('Appointments scheduled successfully');
+                return h.response(result).code(200);
+            } catch (error) {
+                logger.error('Error scheduling appointments:', error);
+                return h.response({ error: 'Error scheduling appointments' }).code(500);
+            }
+        }
+    }
+});
 
 
 // -------------------DOCTORS Routes-----------------------------------------------------
@@ -78,7 +160,7 @@ server.route({
                 const { specialization } = request.payload;
                 const specializationDetails = { specialization };
                 specializationDetails['dr_id'] = data.id;
-
+                
 
                 for (let i = 0; i < request.payload.clinics.length; i++) {
                     let clinicDetails = request.payload.clinics[i];
@@ -192,6 +274,9 @@ server.route({
     options: {
         description: 'Get all doctors details',
         tags: ['api'],
+        auth: {
+            strategy: 'jwt',
+        },
         handler: async (request, h) => {
             const data = await doctorsService.getDoctorsDetails();
             logger.info('All doctors details fetched successfully');
@@ -200,36 +285,6 @@ server.route({
     }
 });
 
-server.route({
-    method: 'POST',
-    path: '/bookingSlots/parents',
-    options: {
-        description: 'Create a new booking slot',
-        tags: ['api'],
-        validate: {
-            payload: Joi.object({
-                dr_id: Joi.number().required(),
-                parent_user_id: Joi.number().required(),
-                child_id: Joi.number().required(),
-                link: Joi.string().required(),
-                booking_date: Joi.date().required(),
-                appointment_date: Joi.date().required(),
-                // take time as 09:00:00
-                start_time: Joi.string().required(),
-                end_time: Joi.string().required(),
-                status: Joi.string().required(),
-                purpose: Joi.string().required(),
-                consulting_fee: Joi.number().required(),
-                booking_fee: Joi.number().required()
-            })
-        },
-        handler: async (request, h) => {
-            const data = await doctorsService.bookingSlots(request.payload);
-            logger.info('Booking slot created successfully');
-            return h.response(data);
-        }
-    }
-});
 
 server.route({
     method: 'POST',
@@ -237,13 +292,16 @@ server.route({
     options: {
         description: 'Add doctor to your favourite list',
         tags: ['api'],
+        auth: {
+            strategy: 'jwt',
+        },
         validate: {
             payload: Joi.object({
                 dr_id: Joi.number().required(),
-                parent_user_id: Joi.number().required()
             })
         },
         handler: async (request, h) => {
+            request.payload['parent_user_id'] = request.auth.credentials.id;
             const data = await doctorsService.addFavouriteDoctor(request.payload);
             logger.info('Doctor added to favourite list successfully');
             return h.response(data);
@@ -258,13 +316,12 @@ server.route({
     options: {
         description: 'Get all your favourite doctors list by parent_user_id',
         tags: ['api'],
-        validate: {
-            query: Joi.object({
-                parent_user_id: Joi.number().required()
-            })
+        auth: {
+            strategy: 'jwt',
         },
         handler: async (request, h) => {
-            const { parent_user_id } = request.query;
+            // const { parent_user_id } = request.query;
+            const parent_user_id = request.auth.credentials.id;
             const data = await doctorsService.getFavouriteDoctors(parent_user_id);
             logger.info('Favourite doctors list fetched successfully');
             return h.response(data);
@@ -278,13 +335,16 @@ server.route({
     options: {
         description: 'Remove doctor from your favourite list',
         tags: ['api'],
+        auth: {
+            strategy: 'jwt',
+        },
         validate: {
             payload: Joi.object({
                 dr_id: Joi.number().required(),
-                parent_user_id: Joi.number().required()
             })
         },
         handler: async (request, h) => {
+            request.payload['parent_user_id'] = request.auth.credentials.id;
             const data = await doctorsService.removeFavouriteDoctor(request.payload);
             logger.info('Doctor removed from favourite list successfully');
             return h.response(data);
@@ -298,13 +358,13 @@ server.route({
     options: {
         description: 'Get all upcoming booking slots of a doctor details by parent_user_id',
         tags: ['api'],
-        validate: {
-            query: Joi.object({
-                parent_user_id: Joi.number().required()
-            })
+        auth: {
+            strategy: 'jwt',
         },
         handler: async (request, h) => {
-            const { parent_user_id } = request.query;
+            // const { parent_user_id } = request.query;
+            const parent_user_id = request.auth.credentials.id;
+            console.log(parent_user_id, 'parent_user_id')
             const data = await doctorsService.getUpcomingBookingSlotsByParentUserId(parent_user_id);
             logger.info('Upcoming booking slots fetched successfully');
             return h.response(data);
@@ -318,15 +378,18 @@ server.route({
     options: {
         description: 'Rate a doctor',
         tags: ['api'],
+        auth: {
+            strategy: 'jwt',
+        },
         validate: {
             payload: Joi.object({
                 dr_id: Joi.number().required(),
                 feedback: Joi.string().required(),
                 rating: Joi.number().required(),
-                parent_user_id: Joi.number().required(),
             })
         },
         handler: async (request, h) => {
+            request.payload['parent_user_id'] = request.auth.credentials.id;
             const data = await doctorsService.ratingToDoctor(request.payload);
             logger.info('Rating given to doctor successfully');
             return h.response(data);
@@ -336,7 +399,7 @@ server.route({
 
 server.route({
     method: 'GET',
-    path: '/rating/parents',
+    path: '/doctor/rating/parents',
     options: {
         description: 'Get all Users details who gave ratings to a doctor by dr_id',
         tags: ['api'],
@@ -352,4 +415,6 @@ server.route({
             return h.response(data);
         }
     }
+});
+
 });
