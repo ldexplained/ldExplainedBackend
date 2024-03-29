@@ -171,6 +171,8 @@ module.exports = class DoctorsServices extends Model {
             if (checkdoctor.length > 0) {
                 return `Doctor already exists with this ${doctorDetails.name}. Please try with another name`
             }
+            doctorDetails['rating'] = 0;
+            doctorDetails['total_feedback'] = 0;
             const data = await Doctors.query().insert(doctorDetails);
             return data;
         }
@@ -610,7 +612,7 @@ module.exports = class DoctorsServices extends Model {
             let avgRating = totalRating / totalParents;
             avgRating = avgRating.toFixed(1);
 
-            await Doctors.query().patchAndFetchById(ratingDetails.dr_id, { rating: avgRating });
+            await Doctors.query().patchAndFetchById(ratingDetails.dr_id, { rating: avgRating, total_feedback: totalParents });
 
             return insertedFeedback;
         }
@@ -642,6 +644,48 @@ module.exports = class DoctorsServices extends Model {
             }
             finalData.push({ patientDetails });
             return finalData;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async createChildren(childrenDetails) {
+        try {
+            let checkUser = await User.query().where('id', childrenDetails.user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${childrenDetails.user_id}`;
+            }
+            else {
+                childrenDetails['parent_name'] = checkUser[0].name;
+                const data = await Child.query().insert(childrenDetails);
+                return data;
+            }
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getChildrenByParentUserId(user_id) {
+        try {
+            let checkUser = await User.query().where('id', user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${user_id}`;
+            }
+            else {
+                const data = await Child.query().where('user_id', user_id);
+                if (data.length === 0) {
+                    return [];
+                }
+
+                let finalData = [];
+                finalData.push({ ...checkUser[0] });
+                finalData.push({ childrenDetails: data });
+                return finalData;                
+            }
         }
         catch (error) {
             logger.error(JSON.stringify(error));
