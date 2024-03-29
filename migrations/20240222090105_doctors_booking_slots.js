@@ -5,14 +5,10 @@ exports.up = async (knex) => {
             table.integer('parent_user_id'), //.unsigned().notNullable().references('id').inTable('tbl_users'), //.onDelete('CASCADE').onUpdate('CASCADE'),
             table.integer('child_id') //.unsigned().notNullable().references('id').inTable('tbl_child'), //.onDelete('CASCADE').onUpdate('CASCADE'),
             table.string('link'),
-            table.date('booking_date'),
-            table.date('appointment_date'),
-            table.time('start_time'),
-            table.time('end_time'),
-            table.string('status'),
-            table.string('purpose'),
-            table.integer('consulting_fee'),
-            table.integer('booking_fee')
+            table.dateTime('booking_date'),
+            table.dateTime('start_time'),
+            table.dateTime('end_time'),
+            table.string('purpose')
     })  
 };
 

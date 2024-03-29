@@ -15,8 +15,154 @@ const FavouriteDoctors = require('../models/favouriteDoctors');
 const DoctorsFeedback = require('../models/doctorsFeedback');
 const logger = require('../config/logger');
 
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const { google } = require('googleapis');
+const { appEmitter } = require('../config/server'); // Adjust the path as needed
 
 module.exports = class DoctorsServices extends Model {
+
+    constructor() {
+        super(); // Call the super constructor when extending a class
+        // Initialize instance properties
+        this.isReady = false;
+        this.calendar = null;
+        this.oauth2Client = null;
+        this.scopes = null;
+
+        // Set up listener for the 'ready' event
+        appEmitter.on('ready', ({ calendar, knex, oauth2Client, scopes }) => {
+            this.calendar = calendar;
+            this.knex = knex;
+            this.oauth2Client = oauth2Client;
+            this.scopes = scopes;
+            this.isReady = true;
+        });
+
+    }
+    // -------------------google SERVICES-----------------------------------------------------
+    // create a method getGoogleAuthUrl() that will return the URL to authenticate the user with Google with try catch error handing
+    async getGoogleAuthUrl() {
+        try {
+            console.log('AAAAAAAAAAAAAa')
+            const authUrl = this.oauth2Client.generateAuthUrl({
+                access_type: 'offline',
+                scope: this.scopes
+            });
+            // console.log(authUrl, 'authUrl')
+            return authUrl;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    // create a method getGoogleRedirectUrl(code) and set the credicentials
+    async getGoogleRedirectUrl(code) {
+        try {
+            const { tokens } = await this.oauth2Client.getToken(code);
+            this.oauth2Client.setCredentials(tokens);
+
+            let userInfo = await this.fetchUserProfile();
+            const existingUser = await User.query().where('email', userInfo.email);
+
+            if (existingUser.length === 0) {
+                await User.query().insert({ name: userInfo.name, email: userInfo.email });
+            }
+            let user = await User.query().where('email', userInfo.email);
+
+            const userDetails = {
+                id: user[0].id,
+                email: user[0].email,
+            };
+
+            const secretKey = process.env.JWT_SECRET;
+            const options = {
+                algorithm: 'HS256',
+                expiresIn: '1h',
+            };
+
+            // Create the JWT
+            const jwtToken = jwt.sign(userDetails, secretKey, options);
+            return jwtToken;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async fetchUserProfile() {
+        const oauth2 = google.oauth2({
+            auth: this.oauth2Client,
+            version: 'v2',
+        });
+
+        const res = await oauth2.userinfo.get();
+        return res.data;
+        // console.log(res.data); // User profile information
+    }
+
+
+    //---------------------------------------------------------------------
+    async scheduleAppointments(appointmentDetails) {
+        const user = await User.query().skipUndefined().where('id', appointmentDetails.parent_user_id);
+        const doctor = await Doctors.query().where('id', appointmentDetails.dr_id);
+        if (!user || !doctor) {
+            throw new Error('User or Doctor not found');
+        }
+
+        const appointments = appointmentDetails.appointments;
+        delete appointmentDetails.appointments;
+
+        const eventResponses = [];
+
+        const eventDescription = `Appointment between Dr. ${doctor.name} and ${user.name}`;
+        for (const { start_time, end_time } of appointments) {
+            const requestId = uuidv4();
+            // Create the event for the doctor's calendar first to generate the Meet link
+            const doctorEvent = {
+                summary: appointmentDetails.purpose,
+                description: eventDescription,
+                start: { dateTime: start_time, timeZone: 'Asia/Kolkata' },
+                end: { dateTime: end_time, timeZone: 'Asia/Kolkata' },
+                attendees: [{ email: doctor[0].email }],
+                conferenceData: { createRequest: { requestId } },
+            };
+
+            try {
+                const doctorEventResponse = await this.calendar.events.insert({
+                    calendarId: 'primary', // Assuming doctor's primary this.calendar. Replace if necessary.
+                    resource: doctorEvent,
+                    conferenceDataVersion: 1,
+                    sendUpdates: 'all',
+                    auth: this.oauth2Client,
+                });
+
+                const meetLink = doctorEventResponse.data.hangoutLink;
+
+                // Assuming this function exists in your service to save appointment details
+                appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
+                appointmentDetails['link'] = meetLink;
+                appointmentDetails['start_time'] = start_time;
+                appointmentDetails['end_time'] = end_time;
+
+                await DoctorsBookingSlot.query().insert(appointmentDetails);
+
+                eventResponses.push({
+                    doctorEventLink: doctorEventResponse.data.htmlLink,
+                    // userEventLink: userEvent.htmlLink, // This assumes successful event creation
+                    meetLink: meetLink,
+                });
+
+            } catch (error) {
+                console.error('Error creating calendar event:', error);
+                throw error;
+            }
+        }
+        return eventResponses;
+    }
 
     // -------------------DOCTORS SERVICES-----------------------------------------------------
     async createDoctors(doctorDetails) {
@@ -77,8 +223,6 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-
-
     async createDoctorSpecialization(specializations) {
         try {
             const { dr_id, specialization } = specializations;
@@ -107,7 +251,6 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
-
 
     async createDoctorClinic(clinicDetails) {
         delete clinicDetails.clinic_images_link;
@@ -186,8 +329,6 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
-
-
 
     async getDoctorById(id, key) {
         try {
@@ -310,37 +451,6 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-    async bookingSlots(bookingDetails) {
-        try {
-            let checkDoctor = await Doctors.query().where('id', bookingDetails.dr_id);
-            if (checkDoctor.length === 0) {
-                return `No Doctor found with id ${bookingDetails.dr_id}`;
-            }
-
-            let checkUser = await User.query().where('id', bookingDetails.parent_user_id);
-            if (checkUser.length === 0) {
-                return `No Parent found with id ${bookingDetails.parent_user_id}`;
-            }
-
-            let checkChild = await Child.query().where('id', bookingDetails.child_id);
-            if (checkChild.length === 0) {
-                return `No Child found with id ${bookingDetails.child_id}`;
-            }
-
-            let checkRelation = await Child.query().where('id', bookingDetails.child_id).andWhere('user_id', bookingDetails.parent_user_id);
-            if (checkRelation.length === 0) {
-                return `No relation found between parent and child with id ${bookingDetails.parent_user_id} and ${bookingDetails.child_id}`;
-            }
-
-            const data = await DoctorsBookingSlot.query().insert(bookingDetails);
-            return data;
-        }
-        catch (error) {
-            logger.error(JSON.stringify(error));
-            return error;
-        }
-    }
-
     async addFavouriteDoctor(addFavDetails) {
         try {
             let checkDoctor = await Doctors.query().where('id', addFavDetails.dr_id);
@@ -367,7 +477,6 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
-
 
     async getFavouriteDoctors(parent_user_id) {
         try {
@@ -418,7 +527,6 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-
     async removeFavouriteDoctor(removeFavDetails) {
         try {
             let checkDoctor = await Doctors.query().where('id', removeFavDetails.dr_id);
@@ -442,6 +550,7 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
+
     async getUpcomingBookingSlotsByParentUserId(parent_user_id) {
         try {
             let checkUser = await User.query().where('id', parent_user_id);
@@ -451,7 +560,7 @@ module.exports = class DoctorsServices extends Model {
 
             let today = new Date();
             today = today.toISOString().split('T')[0];
-            const data = await DoctorsBookingSlot.query().where('parent_user_id', parent_user_id).andWhere('appointment_date', '>=', today);
+            const data = await DoctorsBookingSlot.query().where('parent_user_id', parent_user_id).andWhere('booking_date', '>=', today);
             if (data.length === 0) {
                 return [];
             }

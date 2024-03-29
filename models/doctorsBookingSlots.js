@@ -16,13 +16,9 @@ class DoctorsBookingSlot extends Model {
             child_id: Joi.number().integer().required(),
             link: Joi.string().min(1).required(),
             booking_date: Joi.date().required(),
-            appointment_date: Joi.date().required(),
-            start_time: Joi.string().min(1).required(),
-            end_time: Joi.string().min(1).required(),
-            status: Joi.string().min(1).required(),
+            start_time: Joi.date().required(),
+            end_time: Joi.date().required(),
             purpose: Joi.string().min(1).required(),
-            consulting_fee: Joi.number().integer().required(),
-            booking_fee: Joi.number().integer().required()
 
 
         });
