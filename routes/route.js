@@ -277,6 +277,10 @@ server.route({
             strategy: 'jwt',
         },
         handler: async (request, h) => {
+            if (request.auth.credentials.role !== 'doctor') {
+                logger.error('You don\'t have sufficient access.');
+                return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
+            }
             const data = await doctorsService.getDoctorsDetails();
             logger.info('All doctors details fetched successfully');
             return h.response(data);

@@ -13,6 +13,7 @@ const User = require('../models/parentUsers');
 const Child = require('../models/children');
 const FavouriteDoctors = require('../models/favouriteDoctors');
 const DoctorsFeedback = require('../models/doctorsFeedback');
+const Roles = require('../models/roles');
 const logger = require('../config/logger');
 
 const jwt = require('jsonwebtoken');
@@ -71,11 +72,16 @@ module.exports = class DoctorsServices extends Model {
                 await User.query().insert({ name: userInfo.name, email: userInfo.email });
             }
             let user = await User.query().where('email', userInfo.email);
+            let checkRoles = await Roles.query().where('email', userInfo.email);
 
             const userDetails = {
                 id: user[0].id,
                 email: user[0].email,
-            };
+            };  
+
+            if (checkRoles.length !== 0) {
+                userDetails['role'] = checkRoles[0].role;
+            }
 
             const secretKey = process.env.JWT_SECRET;
             const options = {
