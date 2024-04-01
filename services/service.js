@@ -45,7 +45,6 @@ module.exports = class DoctorsServices extends Model {
     // create a method getGoogleAuthUrl() that will return the URL to authenticate the user with Google with try catch error handing
     async getGoogleAuthUrl() {
         try {
-            console.log('AAAAAAAAAAAAAa')
             const authUrl = this.oauth2Client.generateAuthUrl({
                 access_type: 'offline',
                 scope: this.scopes
@@ -366,7 +365,7 @@ module.exports = class DoctorsServices extends Model {
             let today = new Date();
             today = today.toISOString().split('T')[0];
             if (key === 'today') {
-                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('appointment_date', today);
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', today);
                 if (bookingSlots.length === 0) {
                     data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
                     return data;
@@ -380,7 +379,7 @@ module.exports = class DoctorsServices extends Model {
                 }
 
             } else if (key === 'upcoming') {
-                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('appointment_date', '>', today);
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', '>', today);
                 if (bookingSlots.length === 0) {
                     data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
                     return data;
