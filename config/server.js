@@ -8,6 +8,7 @@ const knex = require('knex')(knexConfig.development);
 require('dotenv').config();
 const { google } = require('googleapis');
 const User = require('../models/parentUsers');
+const Roles = require('../models/roles');
 const EventEmitter = require('events');
 
 class AppEmitter extends EventEmitter { }
@@ -59,6 +60,12 @@ async function init() {
     const user = await User.query().findById(decoded.id);
     if (!user) {
       return { isValid: false };
+    }
+    let checkRole = await Roles.query().where('email', user.email).first();
+    if (checkRole.role !== undefined && checkRole.role !== null) {
+      user.role = checkRole.role;
+    } else {
+      user.role = null;
     }
     return { isValid: true, credentials: user };
   };
