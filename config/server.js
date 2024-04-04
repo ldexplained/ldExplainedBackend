@@ -57,7 +57,7 @@ async function init() {
             in: 'header'
           }
         },
-        schemes: ['http', 'https'],
+        // schemes: ['http', 'https'],
         security: [{ jwt: [] }]
       }
     }
