@@ -19,7 +19,7 @@ async function init() {
     port: process.env.PORT || 8000,
     "routes": {
       "cors": {
-        "origin": ["Access-Control-Allow-Origin", "192.168.1.13:4200"],
+        "origin": ["http://192.168.1.13:4200"], // Specify the allowed origin here
         "headers": ["Accept", "Content-Type"],
         "additionalHeaders": ["X-Requested-With"]
       }
