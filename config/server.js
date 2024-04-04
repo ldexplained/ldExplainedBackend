@@ -17,6 +17,13 @@ const appEmitter = new AppEmitter();
 async function init() {
   const server = Hapi.server({
     port: process.env.PORT || 8000,
+    "routes": {
+      "cors": {
+        "origin": ["Access-Control-Allow-Origin", "192.168.1.13:4200"],
+        "headers": ["Accept", "Content-Type"],
+        "additionalHeaders": ["X-Requested-With"]
+      }
+    }
   });
 
   const oauth2Client = new google.auth.OAuth2(
@@ -50,7 +57,7 @@ async function init() {
             in: 'header'
           }
         },
-        // schemes: ['http',],
+        schemes: ['http', 'https'],
         security: [{ jwt: [] }]
       }
     }
