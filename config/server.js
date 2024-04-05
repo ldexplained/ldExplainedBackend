@@ -17,13 +17,13 @@ const appEmitter = new AppEmitter();
 async function init() {
   const server = Hapi.server({
     port: process.env.PORT || 8000,
-    "routes": {
-      "cors": {
+    routes: {
+      cors: {
         // "origin": ["Access-Control-Allow-Origin", "192.168.1.13:4200"],
         // Allow requests from any origin (global access)
-        "origin": ["*"],
-        "headers": ["Accept", "Content-Type"],
-        "additionalHeaders": ["X-Requested-With"]
+        origin: ['*'],
+        headers: ['Accept', 'Content-Type'],
+        additionalHeaders: ['cache-control', 'x-requested-with']
       }
     }
   });
