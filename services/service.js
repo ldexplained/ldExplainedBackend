@@ -345,9 +345,8 @@ module.exports = class DoctorsServices extends Model {
                 return [];
             }
 
-            let services = await servicesMasterAll.query().select('services');
-            let servicesArray = services.map((service) => service.services);
-            data[0].services = servicesArray;
+            let services = await servicesMasterAll.query().select('services', 'consulting_fee', 'booking_fee');
+            data[0].services = services;
 
             let degrees = await degreesMasterAll.query().select('degrees');
             let degreesArray = degrees.map((degree) => degree.degrees);
@@ -434,8 +433,7 @@ module.exports = class DoctorsServices extends Model {
                 return [];
             }
 
-            let serviceData = await servicesMasterAll.query().select('services');
-            let services = serviceData.map((service) => service.services);
+            let services = await servicesMasterAll.query().select('services', 'consulting_fee', 'booking_fee');
 
             let degreeData = await degreesMasterAll.query().select('degrees');
             let degrees = degreeData.map((degree) => degree.degrees);
@@ -454,7 +452,7 @@ module.exports = class DoctorsServices extends Model {
                     clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
                 }
 
-                
+
                 finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
             }
             return finalData;
