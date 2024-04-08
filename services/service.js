@@ -15,6 +15,9 @@ const FavouriteDoctors = require('../models/favouriteDoctors');
 const DoctorsFeedback = require('../models/doctorsFeedback');
 const Roles = require('../models/roles');
 const logger = require('../config/logger');
+const servicesMasterAll = require('../models/servicesMasterAll');
+const specializationsMasterAll = require('../models/specializationMasterAll');
+const degreesMasterAll = require('../models/degreesMasterAll');
 
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -337,18 +340,23 @@ module.exports = class DoctorsServices extends Model {
 
     async getDoctorById(id, key) {
         try {
-            const data = await Doctors.query().where('id', id).withGraphFetched('[degrees, awards, services, specialization, experience]');
+            const data = await Doctors.query().where('id', id).withGraphFetched('[ awards, experience]');
             if (data.length === 0) {
                 return [];
             }
 
-            for (let i = 0; i < data[0].specialization.length; i++) {
-                data[0].specialization[i].specialization = JSON.parse(data[0].specialization[i].specialization);
-            }
+            let services = await servicesMasterAll.query().select('services');
+            let servicesArray = services.map((service) => service.services);
+            data[0].services = servicesArray;
 
-            for (let i = 0; i < data[0].services.length; i++) {
-                data[0].services[i].service_name = JSON.parse(data[0].services[i].service_name);
-            }
+            let degrees = await degreesMasterAll.query().select('degrees');
+            let degreesArray = degrees.map((degree) => degree.degrees);
+            data[0].degrees = degreesArray;
+
+            let specializations = await specializationsMasterAll.query().select('specializations');
+            let specializationsArray = specializations.map((specialization) => specialization.specializations);
+            data[0].specialization = specializationsArray;
+
 
             let clinicDetails = await DoctorsClinicIds.query().where('dr_id', id);
             let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
@@ -421,10 +429,19 @@ module.exports = class DoctorsServices extends Model {
 
     async getDoctorsDetails() {
         try {
-            const data = await Doctors.query().withGraphFetched('[degrees, awards, services, specialization, experience]');
+            const data = await Doctors.query().withGraphFetched('[ awards, experience ]');
             if (data.length === 0) {
                 return [];
             }
+
+            let serviceData = await servicesMasterAll.query().select('services');
+            let services = serviceData.map((service) => service.services);
+
+            let degreeData = await degreesMasterAll.query().select('degrees');
+            let degrees = degreeData.map((degree) => degree.degrees);
+
+            let specializationsData = await specializationsMasterAll.query().select('specializations');
+            let specializations = specializationsData.map((specialization) => specialization.specializations);
 
             let finalData = [];
             for (let dr of data) {
@@ -437,16 +454,8 @@ module.exports = class DoctorsServices extends Model {
                     clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
                 }
 
-                let specialization = [];
-                for (let i = 0; i < dr.specialization.length; i++) {
-                    specialization.push(JSON.parse(dr.specialization[i].specialization));
-                }
-
-                let services = [];
-                for (let i = 0; i < dr.services.length; i++) {
-                    services.push(JSON.parse(dr.services[i].service_name));
-                }
-                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
+                
+                finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
             }
             return finalData;
         }
