@@ -107,6 +107,9 @@ appEmitter.on('ready', ({ server }) => {
                     consulting_fee: Joi.number(),
                     booking_fee: Joi.number(),
                     video_call_link: Joi.string(),
+                    state: Joi.string().required(),
+                    city: Joi.string().required(),
+                    locality: Joi.string().required(),
 
                     // Doctor degree
                     degree: Joi.array().items(Joi.object({
@@ -150,8 +153,8 @@ appEmitter.on('ready', ({ server }) => {
                     return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
                 }
 
-                const { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link } = request.payload;
-                const drDetails = { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link };
+                const { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link, state, city, locality } = request.payload;
+                const drDetails = { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link , state, city, locality};
 
                 let data = await doctorsService.createDoctors(drDetails);
 
@@ -216,14 +219,16 @@ appEmitter.on('ready', ({ server }) => {
             tags: ['api'],
             validate: {
                 query: Joi.object({
-                    // id: Joi.number(),
                     gender: Joi.string(),
-                    specialization: Joi.string(),
+                    // specialization: Joi.string(),
+                    state: Joi.string(),
+                    city: Joi.string(),
+                    locality: Joi.string()
                 })
             },
             handler: async (request, h) => {
-                const { id, gender, specialization } = request.query;
-                const data = await doctorsService.getDoctorByName(gender, specialization);
+                const { id, gender, specialization, state, city, locality } = request.query;
+                const data = await doctorsService.getDoctorByName(gender, state, city, locality);
                 logger.info('Doctor details fetched successfully');
                 return h.response(data);
             }
