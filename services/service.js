@@ -79,7 +79,7 @@ module.exports = class DoctorsServices extends Model {
             const userDetails = {
                 id: user[0].id,
                 email: user[0].email,
-            };  
+            };
 
             if (checkRoles.length !== 0) {
                 userDetails['role'] = checkRoles[0].role;
@@ -287,52 +287,179 @@ module.exports = class DoctorsServices extends Model {
     }
 
 
-    async getDoctorByName(gender, specialization) {
+    async getDoctorByName(gender, state, city, locality) {
         try {
-            let doctorsQuery = Doctors.query();
-
-            if (gender !== undefined && gender !== null) {
-                doctorsQuery = doctorsQuery.where('gender', gender);
-            }
-
-            if (specialization !== undefined && specialization !== null) {
-                const drSpe = await DoctorsSpecialization.query().where('specialization', 'like', `%${specialization}%`);
-                const drIds = drSpe.map((dr) => dr.dr_id);
-                doctorsQuery = doctorsQuery.whereIn('id', drIds);
-            }
-
-            const data = await doctorsQuery.withGraphFetched('[degrees, awards, services, specialization, experience]');
-
-            if (data.length === 0) {
-                return [];
-            }
-
             let finalData = [];
-            for (let dr of data) {
-                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+            let services = await servicesMasterAll.query().select('services', 'consulting_fee', 'booking_fee');
 
-                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+            let degreeData = await degreesMasterAll.query().select('degrees');
+            let degrees = degreeData.map((degree) => degree.degrees);
 
-                // parse clinic images link from stringified array to actual array
-                for (let i = 0; i < clinicImages.length; i++) {
-                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+            let specializationsData = await specializationsMasterAll.query().select('specializations');
+            let specializations = specializationsData.map((specialization) => specialization.specializations);
+
+            if(state !== undefined && state !== null && city !== undefined && city !== null && locality !== undefined && locality !== null && gender !== undefined && gender !== null) {
+                const data = await Doctors.query()
+                .where('state', state)
+                .andWhere('city', city)
+                .andWhere('locality', locality)
+                .andWhere('gender', gender)
+                .withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
                 }
-
-                let specialization = [];
-                for (let i = 0; i < dr.specialization.length; i++) {
-                    specialization.push(JSON.parse(dr.specialization[i].specialization));
-                }
-
-                let services = [];
-                for (let i = 0; i < dr.services.length; i++) {
-                    services.push(JSON.parse(dr.services[i].service_name));
-                }
-                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
+                return finalData;
             }
-            return finalData;
+
+            else if(state !== undefined && state !== null && city !== undefined && city !== null) {
+                const data = await Doctors.query().where('state', state).andWhere('city', city).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+            else if(state !== undefined && state !== null && locality !== undefined && locality !== null) {
+                const data = await Doctors.query().where('state', state).andWhere('locality', locality).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+            else if(city !== undefined && city !== null && locality !== undefined && locality !== null) {
+                const data = await Doctors.query().where('city', city).andWhere('locality', locality).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+
+            else if (gender !== undefined && gender !== null) {
+                const data = await Doctors.query().where('gender', gender).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+            else if (state !== undefined && state !== null) {
+                const data = await Doctors.query().where('state', state).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+            else if(city !== undefined && city !==null){
+                const data = await Doctors.query().where('city', city).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+            else if(locality !==undefined && locality !==null) {
+                const data = await Doctors.query().where('locality', locality).withGraphFetched('[ awards, experience]');
+                for (let dr of data) {
+                    let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
+                    let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
+
+                    let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
+                    let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
+
+                    // parse clinic images link from stringified array to actual array
+                    for (let i = 0; i < clinicImages.length; i++) {
+                        clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                    }
+
+                    finalData.push({ ...dr, clinic, clinicImages, services, degrees, specializations });
+                }
+                return finalData;
+            }
+
+            
+
+
         } catch (error) {
+            console.log(error,'errro')
             logger.error(JSON.stringify(error));
             return error;
         }
@@ -696,7 +823,7 @@ module.exports = class DoctorsServices extends Model {
                 let finalData = [];
                 finalData.push({ ...checkUser[0] });
                 finalData.push({ childrenDetails: data });
-                return finalData;                
+                return finalData;
             }
         }
         catch (error) {
