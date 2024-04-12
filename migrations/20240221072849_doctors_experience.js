@@ -6,7 +6,7 @@ exports.up = async (knex) => {
             table.date('start_date'),
             table.date('end_date'),
             table.string('designation'),
-            table.string('hospital_name')
+            table.integer('hospital_id').unsigned().notNullable().references('id').inTable('hospital_master_all').onDelete('CASCADE').onUpdate('CASCADE')
     })
 };
 

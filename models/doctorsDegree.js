@@ -13,8 +13,8 @@ class DoctorsDegree extends Model{
         return Joi.object({
             id: Joi.number().integer().greater(0),
             dr_id: Joi.number().integer().greater(0).required(),
-            degree: Joi.string().min(1).required(),
-            college_name: Joi.string().min(1).required(),
+            degree_id: Joi.number().integer().greater(0).required(),
+            college_id: Joi.number().integer().greater(0).required(),
             start_date: Joi.date().required(),
             end_date: Joi.date().required(),
         })

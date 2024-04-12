@@ -13,7 +13,9 @@ class DoctorsService extends Model{
         return Joi.object({
             id: Joi.number().integer().greater(0),
             dr_id: Joi.number().integer().greater(0).required(),
-            service_name: Joi.string().min(1).required(),
+            service_id: Joi.number().integer().greater(0).required(),
+            consultation_fee: Joi.number().integer().greater(0).required(),
+            booking_fee: Joi.number().integer().greater(0).required(),
 
         })
     }
