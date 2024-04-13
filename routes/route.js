@@ -57,9 +57,12 @@ appEmitter.on('ready', ({ server }) => {
             validate: {
                 payload: Joi.object({
                     // parent_user_id: Joi.number().required(),
-                    dr_id: Joi.number().required(),
-                    child_id: Joi.number().required(),
+                    dr_id: Joi.number().integer().required(),
+                    child_id: Joi.number().integer().required(),
                     purpose: Joi.string().required(),
+                    mode: Joi.valid('home', 'online', 'in_clinic').required(),
+                    address: Joi.string(),
+                    clinic_id: Joi.number().integer(),
                     appointments: Joi.array().items(
                         Joi.object({
                             start_time: Joi.string().isoDate().required(),
@@ -79,6 +82,73 @@ appEmitter.on('ready', ({ server }) => {
                     logger.error('Error scheduling appointments:', error);
                     return h.response({ error: 'Error scheduling appointments' }).code(500);
                 }
+            }
+        }
+    });
+
+    server.route({
+        method: 'DELETE',
+        path: '/appointments-schedule/{event_id}',
+        options: {
+            description: 'Delete appointments by event_id',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            validate: {
+                params: Joi.object({
+                    event_id: Joi.string().required()
+                })
+            },
+            handler: async (request, h) => {
+                let parent_user_id = request.auth.credentials.id;
+                const { event_id } = request.params;
+                try {
+                    const result = await doctorsService.deleteAppointments(event_id, parent_user_id);
+                    logger.info('Appointments deleted successfully');
+                    return h.response(result).code(200);
+                } catch (error) {
+                    logger.error('Error deleting appointments:', error);
+                    return h.response({ error: 'Error deleting appointments' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/appointments-schedule/{event_id}',
+        options: {
+            description: 'Update appointments by event_id',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            validate: {
+                params: Joi.object({
+                    event_id: Joi.string().required()
+                }),
+                payload: Joi.object({
+                    purpose: Joi.string(),
+                    mode: Joi.valid('home', 'online', 'in_clinic'),
+                    address: Joi.string(),
+                    clinic_id: Joi.number().integer(),
+                    start_time: Joi.string().isoDate(),
+                    end_time: Joi.string().isoDate()
+                })
+            },
+            handler: async (request, h) => {
+                let parent_user_id = request.auth.credentials.id;
+                const { event_id } = request.params;
+                try {
+                    const result = await doctorsService.updateAppointments(event_id, parent_user_id, request.payload);
+                    logger.info('Appointments updated successfully');
+                    return h.response(result).code(200);
+                } catch (error) {
+                    logger.error('Error updating appointments:', error);
+                    return h.response({ error: 'Error updating appointments' }).code(500);
+                }
+
             }
         }
     });
@@ -107,11 +177,14 @@ appEmitter.on('ready', ({ server }) => {
                     consulting_fee: Joi.number(),
                     booking_fee: Joi.number(),
                     video_call_link: Joi.string(),
+                    state: Joi.string().required(),
+                    city: Joi.string().required(),
+                    locality: Joi.string().required(),
 
                     // Doctor degree
                     degree: Joi.array().items(Joi.object({
-                        degree: Joi.string().required(),
-                        college_name: Joi.string().required(),
+                        degree_id: Joi.string().required(),
+                        college_id: Joi.string().required(),
                         degree_start_date: Joi.date().required(),
                         degree_end_date: Joi.date().required()
                     })).required(),
@@ -124,24 +197,20 @@ appEmitter.on('ready', ({ server }) => {
                     })).required(),
 
                     // Doctor services
-                    service_name: Joi.array().items(Joi.string().required()).required(),
+                    service_id: Joi.array().items(Joi.number().integer().required()).required(),
 
                     // Doctor Specialization
-                    specialization: Joi.array().items(Joi.string().required()).required(),
+                    specialization_id: Joi.array().items(Joi.string().required()).required(),
 
                     // Doctor Experience
                     experience: Joi.array().items(Joi.object({
-                        hospital_name: Joi.string().required(),
+                        hospital_id: Joi.string().required(),
                         designation: Joi.string().required(),
                         exp_start_date: Joi.date().required(),
                         exp_end_date: Joi.date().required()
                     })).required(),
 
-                    clinics: Joi.array().items(Joi.object({
-                        clinic_name: Joi.string().required(),
-                        clinic_address: Joi.string().required(),
-                        clinic_images_link: Joi.array().items(Joi.string().required()).required()
-                    })).required(),
+                    clinic_id: Joi.array().items(Joi.number().integer().required())
                 })
             },
             handler: async (request, h) => {
@@ -150,19 +219,19 @@ appEmitter.on('ready', ({ server }) => {
                     return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
                 }
 
-                const { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link } = request.payload;
-                const drDetails = { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link };
+                const { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link, state, city, locality } = request.payload;
+                const drDetails = { name, location, about_me, gender, address, contact, profile_link, consulting_fee, booking_fee, video_call_link, state, city, locality };
 
                 let data = await doctorsService.createDoctors(drDetails);
 
                 if (data.id !== undefined && data.id !== null) {
 
-                    const { service_name } = request.payload;
-                    const serviceDetails = { service_name };
+                    const { service_id } = request.payload;
+                    const serviceDetails = { service_id };
                     serviceDetails['dr_id'] = data.id;
 
-                    const { specialization } = request.payload;
-                    const specializationDetails = { specialization };
+                    const { specialization_id } = request.payload;
+                    const specializationDetails = { specialization_id };
                     specializationDetails['dr_id'] = data.id;
 
 
@@ -207,6 +276,47 @@ appEmitter.on('ready', ({ server }) => {
         }
     });
 
+    // // create a put for doctors by id for updating the doctor degree details, specialization details, services details
+    // server.route({
+    //     method: 'PUT',
+    //     path: '/doctors/{id}',
+    //     options: {
+    //         description: 'Update doctor by id',
+    //         tags: ['api'],
+    //         validate: {
+    //             payload: Joi.object({
+    //                 // degree details
+    //                 degree_id: Joi.number().integer().greater(0).required(),
+    //                 college_id: Joi.number().integer().greater(0).required(),
+
+    //                 // specialization details
+    //                 specialization_id: Joi.number().integer().greater(0).required(),
+
+    //                 // service details
+    //                 service_id: Joi.number().integer().greater(0).required(),
+    //                 consultation_fee: Joi.number().integer().greater(0).required(),
+    //                 booking_fee: Joi.number().integer().greater(0).required()
+
+    //             }),
+    //             params: Joi.object({
+    //                 id: Joi.number()
+    //             })
+    //         },
+    //         handler: async (request, h) => {
+    //             // if (request.auth.credentials.role !== 'doctor' && request.auth.credentials.role !== 'admin') {
+    //             //     logger.error('You don\'t have sufficient access.');
+    //             //     return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
+    //             // }
+    //             let dr_id = request.params.id;
+    //             const { degree_id, college_id, specialization_id, service_id, consultation_fee, booking_fee } = request.payload;
+    //             const data = await doctorsService.updateDoctorById( dr_id, degree_id, college_id, specialization_id, service_id, consultation_fee, booking_fee);
+    //             logger.info('Doctor updated successfully');
+    //             return h.response(data);
+    //         }
+    //     }
+    // });
+
+
 
     server.route({
         method: 'GET',
@@ -216,15 +326,50 @@ appEmitter.on('ready', ({ server }) => {
             tags: ['api'],
             validate: {
                 query: Joi.object({
-                    // id: Joi.number(),
-                    gender: Joi.string(),
+                    name: Joi.string(),
                     specialization: Joi.string(),
+                    city: Joi.string(),
                 })
             },
             handler: async (request, h) => {
-                const { id, gender, specialization } = request.query;
-                const data = await doctorsService.getDoctorByName(gender, specialization);
-                logger.info('Doctor details fetched successfully');
+                const { name, specialization, city } = request.query;
+                try {
+                    const data = await doctorsService.getDoctorByName(name, specialization, city);
+                    logger.info('Doctor details fetched successfully');
+                    return h.response(data);
+                } catch (error) {
+                    logger.error('An error occurred while fetching doctor details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    // create routes for applying the doctors leave with dr_id and date
+    server.route({
+        method: 'POST',
+        path: '/doctors/leave',
+        options: {
+            description: 'Apply leave for a doctor',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            validate: {
+                payload: Joi.object({
+                    dr_id: Joi.number().integer().greater(0).required(),
+                    leave: Joi.date().required(),
+                    // leave: Joi.string().required(),
+                })
+            },
+            handler: async (request, h) => {
+                if (request.auth.credentials.role !== 'doctor' && request.auth.credentials.role !== 'admin') {
+                    logger.error('You don\'t have sufficient access.');
+                    return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
+                }
+
+                const data = await doctorsService.applyLeave(request.payload);
+                logger.info('Leave applied successfully');
                 return h.response(data);
             }
         }
@@ -252,7 +397,7 @@ appEmitter.on('ready', ({ server }) => {
                         logger.error('You don\'t have sufficient access.');
                         return h.response({ error: 'You don\'t have sufficient access.' }).code(403);
                     }
-            
+
                     const { dr_id, key } = request.query;
                     const data = await doctorsService.getDoctorById(dr_id, key);
                     logger.info('Doctor details fetched successfully');
@@ -262,7 +407,7 @@ appEmitter.on('ready', ({ server }) => {
                     return h.response({ error: 'An internal server error occurred' }).code(500);
                 }
             }
-            
+
         }
     });
 

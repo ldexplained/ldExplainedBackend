@@ -13,7 +13,7 @@ class DoctorsSpecialization extends Model{
         return Joi.object({
             id: Joi.number().integer().greater(0),
             dr_id: Joi.number().integer().greater(0).required(),
-            specialization: Joi.string().min(1).required(),
+            specialization_id: Joi.number().integer().greater(0).required()
         })
     }
 }

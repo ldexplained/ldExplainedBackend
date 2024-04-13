@@ -15,6 +15,12 @@ const FavouriteDoctors = require('../models/favouriteDoctors');
 const DoctorsFeedback = require('../models/doctorsFeedback');
 const Roles = require('../models/roles');
 const logger = require('../config/logger');
+const servicesMasterAll = require('../models/servicesMasterAll');
+const specializationsMasterAll = require('../models/specializationMasterAll');
+const degreesMasterAll = require('../models/degreesMasterAll');
+const collegeMasterAll = require('../models/collegeMasterAll');
+const hospitalMasterAll = require('../models/hospitalMasterAll');
+const DoctorsLeave = require('../models/doctorsLeave');
 
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -76,7 +82,7 @@ module.exports = class DoctorsServices extends Model {
             const userDetails = {
                 id: user[0].id,
                 email: user[0].email,
-            };  
+            };
 
             if (checkRoles.length !== 0) {
                 userDetails['role'] = checkRoles[0].role;
@@ -118,56 +124,293 @@ module.exports = class DoctorsServices extends Model {
             throw new Error('User or Doctor not found');
         }
 
-        const appointments = appointmentDetails.appointments;
-        delete appointmentDetails.appointments;
+        if (appointmentDetails.mode === 'online') {
+            const appointments = appointmentDetails.appointments;
+            delete appointmentDetails.appointments;
 
-        const eventResponses = [];
+            const eventResponses = [];
 
-        const eventDescription = `Appointment between Dr. ${doctor.name} and ${user.name}`;
-        for (const { start_time, end_time } of appointments) {
-            const requestId = uuidv4();
-            // Create the event for the doctor's calendar first to generate the Meet link
-            const doctorEvent = {
-                summary: appointmentDetails.purpose,
-                description: eventDescription,
-                start: { dateTime: start_time, timeZone: 'Asia/Kolkata' },
-                end: { dateTime: end_time, timeZone: 'Asia/Kolkata' },
-                attendees: [{ email: doctor[0].email }],
-                conferenceData: { createRequest: { requestId } },
-            };
+            const eventDescription = `Online appointment between Dr. ${doctor[0].name} and ${user[0].name}`;
+            for (const { start_time, end_time } of appointments) {
+                const requestId = uuidv4();
+                // Create the event for the doctor's calendar first to generate the Meet link
+                const doctorEvent = {
+                    summary: appointmentDetails.purpose,
+                    description: eventDescription,
+                    start: { dateTime: start_time, timeZone: 'Asia/Kolkata' },
+                    end: { dateTime: end_time, timeZone: 'Asia/Kolkata' },
+                    attendees: [{ email: doctor[0].email }],
+                    conferenceData: { createRequest: { requestId } },
+                };
 
-            try {
-                const doctorEventResponse = await this.calendar.events.insert({
-                    calendarId: 'primary', // Assuming doctor's primary this.calendar. Replace if necessary.
-                    resource: doctorEvent,
-                    conferenceDataVersion: 1,
-                    sendUpdates: 'all',
-                    auth: this.oauth2Client,
-                });
+                try {
+                    const doctorEventResponse = await this.calendar.events.insert({
+                        calendarId: 'primary', // Assuming doctor's primary this.calendar. Replace if necessary.
+                        resource: doctorEvent,
+                        conferenceDataVersion: 1,
+                        sendUpdates: 'all',
+                        auth: this.oauth2Client,
+                    });
 
-                const meetLink = doctorEventResponse.data.hangoutLink;
+                    const meetLink = doctorEventResponse.data.hangoutLink;
 
-                // Assuming this function exists in your service to save appointment details
-                appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
-                appointmentDetails['link'] = meetLink;
-                appointmentDetails['start_time'] = start_time;
-                appointmentDetails['end_time'] = end_time;
+                    // Assuming this function exists in your service to save appointment details
+                    appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
+                    appointmentDetails['link'] = meetLink;
+                    appointmentDetails['start_time'] = start_time;
+                    appointmentDetails['end_time'] = end_time;
+                    appointmentDetails['mode'] = appointmentDetails.mode;
+                    appointmentDetails['address'] = null;
+                    appointmentDetails['clinic_id'] = null;
+                    appointmentDetails['event_id'] = doctorEventResponse.data.id;
 
-                await DoctorsBookingSlot.query().insert(appointmentDetails);
+                    await DoctorsBookingSlot.query().insert(appointmentDetails);
 
-                eventResponses.push({
-                    doctorEventLink: doctorEventResponse.data.htmlLink,
-                    // userEventLink: userEvent.htmlLink, // This assumes successful event creation
-                    meetLink: meetLink,
-                });
+                    eventResponses.push({
+                        doctorEventLink: doctorEventResponse.data.htmlLink,
+                        // userEventLink: userEvent.htmlLink, // This assumes successful event creation
+                        meetLink: meetLink,
+                    });
 
-            } catch (error) {
-                console.error('Error creating calendar event:', error);
-                throw error;
+                } catch (error) {
+                    console.error('Error creating calendar event:', error);
+                    throw error;
+                }
             }
+            // return eventResponses;
+            return [{
+                statusCode: 200,
+                message: `Online appointment between Dr. ${doctor[0].name} and ${user[0].name} created successfully`
+            }]
         }
-        return eventResponses;
+        else if (appointmentDetails.mode === 'home') {
+            // create a new event for the doctor's calendar but without a Meet link and take a address from user and insert it into table
+            const appointments = appointmentDetails.appointments;
+            delete appointmentDetails.appointments;
+
+            const eventResponses = [];
+
+            const eventDescription = `Home appointment between Dr. ${doctor[0].name} and ${user[0].name}`;
+            for (const { start_time, end_time } of appointments) {
+                const requestId = uuidv4();
+                // Create the event for the doctor's calendar first to generate the Meet link
+                const doctorEvent = {
+                    summary: appointmentDetails.purpose,
+                    description: eventDescription,
+                    start: { dateTime: start_time, timeZone: 'Asia/Kolkata' },
+                    end: { dateTime: end_time, timeZone: 'Asia/Kolkata' },
+                    attendees: [{ email: doctor[0].email }],
+                    location: appointmentDetails.address,
+                };
+
+                try {
+                    const doctorEventResponse = await this.calendar.events.insert({
+                        calendarId: 'primary', // Assuming doctor's primary this.calendar. Replace if necessary.
+                        resource: doctorEvent,
+                        sendUpdates: 'all',
+                        auth: this.oauth2Client,
+                    });
+
+                    // Assuming this function exists in your service to save appointment details
+                    appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
+                    appointmentDetails['link'] = null;
+                    appointmentDetails['start_time'] = start_time;
+                    appointmentDetails['end_time'] = end_time;
+                    appointmentDetails['mode'] = appointmentDetails.mode;
+                    appointmentDetails['address'] = appointmentDetails.address;
+                    appointmentDetails['clinic_id'] = null;
+                    appointmentDetails['event_id'] = doctorEventResponse.data.id;
+
+                    await DoctorsBookingSlot.query().insert(appointmentDetails);
+
+                    eventResponses.push({
+                        doctorEventLink: doctorEventResponse.data.htmlLink,
+                    });
+
+                } catch (error) {
+                    console.error('Error creating calendar event:', error);
+                    throw error;
+                }
+            }
+            return [{
+                statusCode: 200,
+                message: `Home appointment between Dr. ${doctor[0].name} and ${user[0].name} created successfully`
+            }]
+        }
+        else {
+            if (appointmentDetails.clinic_id === undefined || appointmentDetails.clinic_id === null) {
+                throw new Error('Clinic id is required for in clinic appointment');
+            }
+            else {
+
+                let clinic = await DoctorsClinic.query().where('id', appointmentDetails.clinic_id);
+
+                const appointments = appointmentDetails.appointments;
+                delete appointmentDetails.appointments;
+
+                const eventResponses = [];
+
+                const eventDescription = `In clinic appointment between Dr. ${doctor[0].name} and ${user[0].name}`;
+                for (const { start_time, end_time } of appointments) {
+                    const requestId = uuidv4();
+                    // Create the event for the doctor's calendar first to generate the Meet link
+                    const doctorEvent = {
+                        summary: appointmentDetails.purpose,
+                        description: eventDescription,
+                        start: { dateTime: start_time, timeZone: 'Asia/Kolkata' },
+                        end: { dateTime: end_time, timeZone: 'Asia/Kolkata' },
+                        attendees: [{ email: doctor[0].email }],
+                        location: clinic[0].clinic_address,
+                    };
+
+                    try {
+                        const doctorEventResponse = await this.calendar.events.insert({
+                            calendarId: 'primary', // Assuming doctor's primary this.calendar. Replace if necessary.
+                            resource: doctorEvent,
+                            sendUpdates: 'all',
+                            auth: this.oauth2Client,
+                        });
+
+                        // Assuming this function exists in your service to save appointment details
+                        appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
+                        appointmentDetails['link'] = null;
+                        appointmentDetails['start_time'] = start_time;
+                        appointmentDetails['end_time'] = end_time;
+                        appointmentDetails['mode'] = appointmentDetails.mode;
+                        appointmentDetails['address'] = null;
+                        appointmentDetails['clinic_id'] = appointmentDetails.clinic_id;
+                        appointmentDetails['event_id'] = doctorEventResponse.data.id;
+
+                        await DoctorsBookingSlot.query().insert(appointmentDetails);
+
+                        eventResponses.push({
+                            doctorEventLink: doctorEventResponse.data.htmlLink,
+                        });
+
+                    } catch (error) {
+                        console.error('Error creating calendar event:', error);
+                        throw error;
+                    }
+                }
+            }
+            return [{
+                statusCode: 200,
+                message: `In clinic appointment between Dr. ${doctor[0].name} and ${user[0].name} created successfully`
+            }]
+
+        }
     }
+
+    // create a method with named deleteAppointments(event_id, parent_user_id)
+
+    async deleteAppointments(event_id, parent_user_id) {
+        try {
+            let checkUser = await User.query().where('id', parent_user_id);
+            if (checkUser.length === 0) {
+                return `No User found with id ${parent_user_id}`;
+            }
+
+            let checkEvent = await DoctorsBookingSlot.query().where('event_id', event_id);
+            if (checkEvent.length === 0) {
+                return `No event found with id ${event_id}`;
+            }
+
+            // Retrieve the event details including the eventId
+            const eventDetails = await this.calendar.events.get({
+                calendarId: 'primary', // Calendar ID where the event exists
+                eventId: event_id, // Event ID of the event to be deleted
+                auth: this.oauth2Client,
+            });
+
+            // Delete the event from Google Calendar
+            await this.calendar.events.delete({
+                calendarId: 'primary', // Calendar ID where the event exists
+                eventId: event_id, // Event ID of the event to be deleted
+                auth: this.oauth2Client,
+            });
+
+            // Delete the event data from the database
+            await DoctorsBookingSlot.query().delete().where('event_id', event_id);
+
+            return {
+                statusCode: 200,
+                message: `Event deleted successfully with id ${event_id}`
+            };
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    // create a method with named updateAppointments(event_id,parent_user_id, request.payload);
+    async updateAppointments(event_id, parent_user_id, payload) {
+        try {
+            let appointmentDetails = await DoctorsBookingSlot.query().where('event_id', event_id);
+            if (appointmentDetails.length === 0) {
+                return `No event found with id ${event_id}`;
+            }
+            else {
+
+                if (payload.start_time !== undefined && payload.start_time !== null) {
+                    appointmentDetails[0].start_time = payload.start_time;
+                }
+                if (payload.end_time !== undefined && payload.end_time !== null) {
+                    appointmentDetails[0].end_time = payload.end_time;
+                }
+                if (payload.purpose !== undefined && payload.purpose !== null) {
+                    appointmentDetails[0].purpose = payload.purpose;
+                }
+
+                if (payload.mode === 'online') {
+                    appointmentDetails[0]['address'] = null;
+                    appointmentDetails[0]['clinic_id'] = null;
+                }
+                if (payload.mode === 'home') {
+                    if (payload.address === undefined || payload.address === null) {
+                        throw new Error('Address is required for home appointment');
+                    }
+                    appointmentDetails[0]['address'] = payload.address;
+                    appointmentDetails[0]['clinic_id'] = null;
+                }
+                if (payload.mode !== undefined && payload.mode !== null) {
+                    appointmentDetails[0].mode = payload.mode;
+                }
+                if (payload.mode === 'in_clinic') {
+                    if (payload.clinic_id === undefined || payload.clinic_id === null) {
+                        throw new Error('Clinic id is required for in clinic appointment');
+                    }
+                    appointmentDetails[0]['address'] = null;
+                    appointmentDetails[0]['clinic_id'] = payload.clinic_id;
+                }
+
+                if (appointmentDetails[0].start_time !== undefined && appointmentDetails[0].end_time !== undefined) {
+                    if (!(appointmentDetails[0].start_time < appointmentDetails[0].end_time)) {
+                        throw new Error('Start time should be less than end time');
+                    }
+                    appointmentDetails[0].appointments = [{ start_time: appointmentDetails[0].start_time, end_time: appointmentDetails[0].end_time }];
+
+                    delete appointmentDetails[0].start_time;
+                    delete appointmentDetails[0].end_time;
+
+                    await this.deleteAppointments(event_id, parent_user_id);
+                    // create new appointment
+                    await this.scheduleAppointments(appointmentDetails[0]);
+                }
+            }
+            return {
+                statusCode: 200,
+                message: `Event updated successfully with id ${event_id}`
+            };
+        }
+
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+
 
     // -------------------DOCTORS SERVICES-----------------------------------------------------
     async createDoctors(doctorDetails) {
@@ -217,10 +460,8 @@ module.exports = class DoctorsServices extends Model {
 
     async createDoctorService(service) {
         try {
-            const { dr_id, service_name } = service;
-            const jsonString = JSON.stringify(service_name);
-
-            const data = await DoctorsService.query().insert({ dr_id, service_name: jsonString });
+            const { dr_id, service_id } = service;
+            const data = await DoctorsService.query().insert({ dr_id, service_id });
             return data;
         } catch (error) {
             logger.error(JSON.stringify(error));
@@ -230,9 +471,8 @@ module.exports = class DoctorsServices extends Model {
 
     async createDoctorSpecialization(specializations) {
         try {
-            const { dr_id, specialization } = specializations;
-            const jsonString = JSON.stringify(specialization);
-            const data = await DoctorsSpecialization.query().insert({ dr_id, specialization: jsonString });
+            const { dr_id, specialization_id } = specializations;
+            const data = await DoctorsSpecialization.query().insert({ dr_id, specialization_id });
 
             return data;
         } catch (error) {
@@ -283,27 +523,8 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-
-    async getDoctorByName(gender, specialization) {
+    async getSpelizationServicesDegreeHospitalsDetails(data) {
         try {
-            let doctorsQuery = Doctors.query();
-
-            if (gender !== undefined && gender !== null) {
-                doctorsQuery = doctorsQuery.where('gender', gender);
-            }
-
-            if (specialization !== undefined && specialization !== null) {
-                const drSpe = await DoctorsSpecialization.query().where('specialization', 'like', `%${specialization}%`);
-                const drIds = drSpe.map((dr) => dr.dr_id);
-                doctorsQuery = doctorsQuery.whereIn('id', drIds);
-            }
-
-            const data = await doctorsQuery.withGraphFetched('[degrees, awards, services, specialization, experience]');
-
-            if (data.length === 0) {
-                return [];
-            }
-
             let finalData = [];
             for (let dr of data) {
                 let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
@@ -317,18 +538,138 @@ module.exports = class DoctorsServices extends Model {
                     clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
                 }
 
-                let specialization = [];
-                for (let i = 0; i < dr.specialization.length; i++) {
-                    specialization.push(JSON.parse(dr.specialization[i].specialization));
+                let services = await DoctorsService.query().where('dr_id', dr.id);
+                let specialization = await DoctorsSpecialization.query().where('dr_id', dr.id);
+                let degrees = await DoctorsDegree.query().where('dr_id', dr.id);
+                let experiences = await DoctorsExperience.query().where('dr_id', dr.id);
+
+                // put loop on serivicess then take service_id and get service name from servicesMasterAll
+                for (let i = 0; i < services.length; i++) {
+                    let service = await servicesMasterAll.query().where('id', services[i].service_id);
+                    services[i]['service_name'] = service[0].services;
                 }
 
-                let services = [];
-                for (let i = 0; i < dr.services.length; i++) {
-                    services.push(JSON.parse(dr.services[i].service_name));
+                for (let i = 0; i < specialization.length; i++) {
+                    let specializations = await specializationsMasterAll.query().where('id', specialization[i].specialization_id);
+                    specialization[i]['specialization'] = specializations[0].specializations;
                 }
-                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
+
+                for (let i = 0; i < degrees.length; i++) {
+                    let degree = await degreesMasterAll.query().where('id', degrees[i].degree_id);
+                    let college = await collegeMasterAll.query().where('id', degrees[i].college_id);
+                    degrees[i]['college_name'] = college[0].college_name;
+                    degrees[i]['degree'] = degree[0].degrees;
+                }
+
+                for (let i = 0; i < experiences.length; i++) {
+                    let hospital = await hospitalMasterAll.query().where('id', experiences[i].hospital_id);
+                    experiences[i]['hospital_name'] = hospital[0].hospital_name;
+                }
+
+                finalData.push({ ...dr, clinic, clinicImages, services, degrees, specialization, experiences });
             }
             return finalData;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getDoctorByName(name, specialization, city) {
+        try {
+
+            // specilisation with city
+            if (specialization !== undefined && specialization !== null && city !== undefined && city !== null) {
+                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${specialization}%`);
+                if (specializationId.length > 0) {
+                    let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[0].id);
+                    if (checkSpecialization.length === 0) {
+                        return `No Doctor found with specialization ${specialization}`;
+                    }
+                    let drIds = checkSpecialization.map((dr) => dr.dr_id);
+
+                    const data = await Doctors.query()
+                        .whereIn('id', drIds)
+                        .andWhere('city', 'like', `%${city}%`)
+                        .withGraphFetched('[ awards ]');
+                    if (data.length === 0) {
+                        return `No Doctor found with specialization ${specialization} and city ${city}`;
+                    }
+                    let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                    return modifiedData;
+                }
+                else
+                    return [];
+            }
+
+            // city and name
+            else if (city !== undefined && city !== null && name !== undefined && name !== null) {
+                const data = await Doctors.query()
+                    .where('city', 'like', `%${city}%`)
+                    .andWhere('name', 'like', `%${name}%`)
+                    .withGraphFetched('[ awards ]');
+                if (data.length === 0) {
+                    return `No Doctor found with city ${city} and name ${name}`;
+                }
+                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                return modifiedData;
+            }
+
+            //specialization
+            else if (specialization !== undefined && specialization !== null) {
+                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${specialization}%`);
+                if (specializationId.length === 0) {
+                    return `No specialization found with name ${specialization}`;
+                }
+                let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[0].id);
+                if (checkSpecialization.length === 0) {
+                    return `No Doctor found with specialization ${specialization}`;
+                }
+
+                let drIds = checkSpecialization.map((dr) => dr.dr_id);
+                const data = await Doctors.query()
+                    .whereIn('id', drIds)
+                    .withGraphFetched('[ awards ]');
+                if (data.length === 0) {
+                    return `No Doctor found with specialization ${specialization}`;
+                }
+                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                return modifiedData;
+            }
+
+            //city
+            else if (city !== undefined && city !== null) {
+                const data = await Doctors.query()
+                    .where('city', 'like', `%${city}%`)
+                    .withGraphFetched('[ awards ]');
+                if (data.length === 0) {
+                    return `No Doctor found with city ${city}`;
+                }
+                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                return modifiedData;
+            }
+
+            //name
+            else if (name !== undefined && name !== null) {
+                const data = await Doctors.query().where('name', 'like', `%${name}%`).withGraphFetched('[ awards ]');
+                if (data.length === 0) {
+                    return `No Doctor found with name ${name}`;
+                }
+                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                return modifiedData;
+            }
+
+            // all
+            else {
+                const data = await Doctors.query().withGraphFetched('[ awards ]');
+                if (data.length === 0) {
+                    return [];
+                }
+                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                return modifiedData;
+            }
+
         } catch (error) {
             logger.error(JSON.stringify(error));
             return error;
@@ -337,17 +678,9 @@ module.exports = class DoctorsServices extends Model {
 
     async getDoctorById(id, key) {
         try {
-            const data = await Doctors.query().where('id', id).withGraphFetched('[degrees, awards, services, specialization, experience]');
+            const data = await Doctors.query().where('id', id).withGraphFetched('[ awards]');
             if (data.length === 0) {
                 return [];
-            }
-
-            for (let i = 0; i < data[0].specialization.length; i++) {
-                data[0].specialization[i].specialization = JSON.parse(data[0].specialization[i].specialization);
-            }
-
-            for (let i = 0; i < data[0].services.length; i++) {
-                data[0].services[i].service_name = JSON.parse(data[0].services[i].service_name);
             }
 
             let clinicDetails = await DoctorsClinicIds.query().where('dr_id', id);
@@ -361,39 +694,69 @@ module.exports = class DoctorsServices extends Model {
                 clinicImages[i].clinicImagesLength = clinicImages[i].clinic_images_link.length;
             }
 
+            let services = await DoctorsService.query().where('dr_id', id);
+            let specialization = await DoctorsSpecialization.query().where('dr_id', id);
+            let degrees = await DoctorsDegree.query().where('dr_id', id);
+            let experiences = await DoctorsExperience.query().where('dr_id', id);
+
+            // put loop on serivicess then take service_id and get service name from servicesMasterAll
+            for (let i = 0; i < services.length; i++) {
+                let service = await servicesMasterAll.query().where('id', services[i].service_id);
+                services[i]['service_name'] = service[0].services;
+            }
+
+            for (let i = 0; i < specialization.length; i++) {
+                let specializations = await specializationsMasterAll.query().where('id', specialization[i].specialization_id);
+                specialization[i]['specialization'] = specializations[0].specializations;
+            }
+
+            for (let i = 0; i < degrees.length; i++) {
+                let degree = await degreesMasterAll.query().where('id', degrees[i].degree_id);
+                let college = await collegeMasterAll.query().where('id', degrees[i].college_id);
+                degrees[i]['college_name'] = college[0].college_name;
+                degrees[i]['degree'] = degree[0].degrees;
+            }
+
+            for (let i = 0; i < experiences.length; i++) {
+                let hospital = await hospitalMasterAll.query().where('id', experiences[i].hospital_id);
+                experiences[i]['hospital_name'] = hospital[0].hospital_name;
+            }
+
+
             // get only today date.
             let today = new Date();
             today = today.toISOString().split('T')[0];
             if (key === 'today') {
                 let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', today);
                 if (bookingSlots.length === 0) {
-                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
                 } else {
                     for (let i = 0; i < bookingSlots.length; i++) {
                         let user = await User.query().where('id', bookingSlots[i].parent_user_id);
                         bookingSlots[i]['patient_name'] = user[0].name;
                     }
-                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
                 }
 
             } else if (key === 'upcoming') {
                 let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', '>', today);
                 if (bookingSlots.length === 0) {
-                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
                 } else {
                     for (let i = 0; i < bookingSlots.length; i++) {
                         let user = await User.query().where('id', bookingSlots[i].parent_user_id);
                         bookingSlots[i]['patient_name'] = user[0].name;
                     }
-                    data[0] = { ...data[0], clinic, clinicImages, bookingSlots };
+                    data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
                 }
             }
         }
         catch (error) {
+            console.log(error, 'errror')
             logger.error(JSON.stringify(error));
             return error;
         }
@@ -419,36 +782,81 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
+    // create a func with name applyLeave(leaveDetails)
+    async applyLeave(leaveDetails) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', leaveDetails.dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${leaveDetails.dr_id}`;
+            }
+
+            let checkLeave = await DoctorsLeave.query().where('dr_id', leaveDetails.dr_id).andWhere('leave', leaveDetails.leave);
+            if (checkLeave.length > 0) {
+                return `Leave already applied for this date ${leaveDetails.leave}`;
+            }
+
+            await DoctorsLeave.query().insert(leaveDetails);
+            return [{
+                statusCode: 200,
+                message: 'Leave applied successfully'
+            }];
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+
+    // // create a method with name and details updateDoctorById( dr_id, degree_id, college_id, specialization_id, service_id, consultation_fee, booking_fee);
+    // async updateDoctorById( dr_id, degree_id, college_id, specialization_id, service_id, consultation_fee, booking_fee) {
+    //     try {
+    //         let degreeDetails = await degreesMasterAll.query().where('id', degree_id);
+    //         let collegeDetails = await collegeMasterAll.query().where('id', college_id);
+    //         let specializationDetails = await specializationsMasterAll.query().where('id', specialization_id);
+    //         let serviceDetails = await servicesMasterAll.query().where('id', service_id);
+
+    //         if (degreeDetails.length === 0) {
+    //             return `No Degree found with id ${degree_id}`;
+    //         }
+    //         if (collegeDetails.length === 0) {
+    //             return `No College found with id ${college_id}`;
+    //         }
+    //         if (specializationDetails.length === 0) {
+    //             return `No Specialization found with id ${specialization_id}`;
+    //         }
+    //         if (serviceDetails.length === 0) {
+    //             return `No Service found with id ${service_id}`;
+    //         }
+
+    //         let start_date = new Date().toISOString().split('T')[0];
+    //         let end_date = new Date().toISOString().split('T')[0];
+
+    //         await DoctorsDegree.query().insert({ dr_id, degree_id, college_id, start_date, end_date });
+    //         await DoctorsSpecialization.query().insert({ dr_id, specialization_id });
+    //         await DoctorsService.query().insert({ dr_id, service_id, consultation_fee, booking_fee });
+
+    //         return {
+    //             statusCode: 200,
+    //             message: 'Doctor details updated successfully'
+    //         };
+    //     }
+    //     catch (error) {
+    //         logger.error(JSON.stringify(error));
+    //         return error;
+    //     }
+    // }
+
+
     async getDoctorsDetails() {
         try {
-            const data = await Doctors.query().withGraphFetched('[degrees, awards, services, specialization, experience]');
+            const data = await Doctors.query().withGraphFetched('[ awards ]');
             if (data.length === 0) {
                 return [];
             }
 
-            let finalData = [];
-            for (let dr of data) {
-                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
-                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-
-                for (let i = 0; i < clinicImages.length; i++) {
-                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
-                }
-
-                let specialization = [];
-                for (let i = 0; i < dr.specialization.length; i++) {
-                    specialization.push(JSON.parse(dr.specialization[i].specialization));
-                }
-
-                let services = [];
-                for (let i = 0; i < dr.services.length; i++) {
-                    services.push(JSON.parse(dr.services[i].service_name));
-                }
-                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
-            }
-            return finalData;
+            let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+            return modifiedData;
         }
         catch (error) {
             logger.error(JSON.stringify(error));
@@ -689,7 +1097,7 @@ module.exports = class DoctorsServices extends Model {
                 let finalData = [];
                 finalData.push({ ...checkUser[0] });
                 finalData.push({ childrenDetails: data });
-                return finalData;                
+                return finalData;
             }
         }
         catch (error) {
