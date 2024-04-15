@@ -1105,4 +1105,74 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
+
+    async getSpecializations() {
+        try {
+            const data = await specializationsMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getColleges() {
+        try {
+            const data = await collegeMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getDegrees() {
+        try {
+            const data = await degreesMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getHospitals() {
+        try {
+            const data = await hospitalMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getServices() {
+        try {
+            const data = await servicesMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
 }
