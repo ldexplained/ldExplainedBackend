@@ -534,9 +534,9 @@ module.exports = class DoctorsServices extends Model {
                 let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
 
                 // parse clinic images link from stringified array to actual array
-                for (let i = 0; i < clinicImages.length; i++) {
-                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
-                }
+                // for (let i = 0; i < clinicImages.length; i++) {
+                //     clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+                // }
 
                 let services = await DoctorsService.query().where('dr_id', dr.id);
                 let specialization = await DoctorsSpecialization.query().where('dr_id', dr.id);
@@ -689,10 +689,10 @@ module.exports = class DoctorsServices extends Model {
             let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
             let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
 
-            for (let i = 0; i < clinicImages.length; i++) {
-                clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
-                clinicImages[i].clinicImagesLength = clinicImages[i].clinic_images_link.length;
-            }
+            // for (let i = 0; i < clinicImages.length; i++) {
+            //     clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
+            //     clinicImages[i].clinicImagesLength = clinicImages[i].clinic_images_link.length;
+            // }
 
             let services = await DoctorsService.query().where('dr_id', id);
             let specialization = await DoctorsSpecialization.query().where('dr_id', id);
