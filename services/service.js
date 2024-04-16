@@ -154,6 +154,8 @@ module.exports = class DoctorsServices extends Model {
 
                     const meetLink = doctorEventResponse.data.hangoutLink;
 
+                    let booking_date_for = new Date(start_time).toISOString().split('T')[0];
+
                     // Assuming this function exists in your service to save appointment details
                     appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
                     appointmentDetails['link'] = meetLink;
@@ -163,6 +165,7 @@ module.exports = class DoctorsServices extends Model {
                     appointmentDetails['address'] = null;
                     appointmentDetails['clinic_id'] = null;
                     appointmentDetails['event_id'] = doctorEventResponse.data.id;
+                    appointmentDetails['booking_date_for'] = booking_date_for;
 
                     await DoctorsBookingSlot.query().insert(appointmentDetails);
 
@@ -212,6 +215,7 @@ module.exports = class DoctorsServices extends Model {
                     });
 
                     // Assuming this function exists in your service to save appointment details
+                    let booking_date_for = new Date(start_time).toISOString().split('T')[0];
                     appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
                     appointmentDetails['link'] = null;
                     appointmentDetails['start_time'] = start_time;
@@ -220,6 +224,7 @@ module.exports = class DoctorsServices extends Model {
                     appointmentDetails['address'] = appointmentDetails.address;
                     appointmentDetails['clinic_id'] = null;
                     appointmentDetails['event_id'] = doctorEventResponse.data.id;
+                    appointmentDetails['booking_date_for'] = booking_date_for;
 
                     await DoctorsBookingSlot.query().insert(appointmentDetails);
 
@@ -272,6 +277,7 @@ module.exports = class DoctorsServices extends Model {
                         });
 
                         // Assuming this function exists in your service to save appointment details
+                        let booking_date_for = new Date(start_time).toISOString().split('T')[0];
                         appointmentDetails['booking_date'] = new Date().toISOString().split('T')[0];
                         appointmentDetails['link'] = null;
                         appointmentDetails['start_time'] = start_time;
@@ -280,6 +286,7 @@ module.exports = class DoctorsServices extends Model {
                         appointmentDetails['address'] = null;
                         appointmentDetails['clinic_id'] = appointmentDetails.clinic_id;
                         appointmentDetails['event_id'] = doctorEventResponse.data.id;
+                        appointmentDetails['booking_date_for'] = booking_date_for;
 
                         await DoctorsBookingSlot.query().insert(appointmentDetails);
 
@@ -351,9 +358,10 @@ module.exports = class DoctorsServices extends Model {
                 return `No event found with id ${event_id}`;
             }
             else {
-
                 if (payload.start_time !== undefined && payload.start_time !== null) {
+                    let booking_date_for = new Date(payload.start_time).toISOString().split('T')[0];
                     appointmentDetails[0].start_time = payload.start_time;
+                    appointmentDetails[0].booking_date_for = booking_date_for;
                 }
                 if (payload.end_time !== undefined && payload.end_time !== null) {
                     appointmentDetails[0].end_time = payload.end_time;
@@ -733,7 +741,7 @@ module.exports = class DoctorsServices extends Model {
             let today = new Date();
             today = today.toISOString().split('T')[0];
             if (key === 'today') {
-                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', today);
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date_for', today);
                 if (bookingSlots.length === 0) {
                     data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
@@ -747,7 +755,7 @@ module.exports = class DoctorsServices extends Model {
                 }
 
             } else if (key === 'upcoming') {
-                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date', '>', today);
+                let bookingSlots = await DoctorsBookingSlot.query().where('dr_id', id).andWhere('booking_date_for', '>', today);
                 if (bookingSlots.length === 0) {
                     data[0] = { ...data[0], services, specialization, degrees, experiences, clinic, clinicImages, bookingSlots };
                     return data;
