@@ -658,4 +658,104 @@ appEmitter.on('ready', ({ server }) => {
         }
     });
 
+    server.route({
+        method: 'GET',
+        path: '/dropdown/specilizations',
+        options: {
+            description: 'Get all specializations details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getSpecializations();
+                    logger.info('Specializations details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching specializations details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/dropdown/colleges',
+        options: {
+            description: 'Get all colleges details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getColleges();
+                    logger.info('Colleges details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching colleges details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/dropdown/degrees',
+        options: {
+            description: 'Get all degrees details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getDegrees();
+                    logger.info('Degrees details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching degrees details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/dropdown/hospitals',
+        options: {
+            description: 'Get all hospitals details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getHospitals();
+                    logger.info('Hospitals details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching hospitals details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/dropdown/services',
+        options: {
+            description: 'Get all services details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getServices();
+                    logger.info('Services details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching services details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
 });
