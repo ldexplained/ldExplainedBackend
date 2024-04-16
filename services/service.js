@@ -576,85 +576,91 @@ module.exports = class DoctorsServices extends Model {
         }
     }
 
-    async getDoctorByName(name, specialization, city) {
+    async getDoctorByName(name_or_specil, city) {
         try {
 
-            // specilisation with city
-            if (specialization !== undefined && specialization !== null && city !== undefined && city !== null) {
-                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${specialization}%`);
-                if (specializationId.length > 0) {
-                    let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[0].id);
-                    if (checkSpecialization.length === 0) {
-                        return `No Doctor found with specialization ${specialization}`;
+            // name_or_specil with city
+            if (name_or_specil !== undefined && name_or_specil !== null && city !== undefined && city !== null) {
+                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${name_or_specil}%`);
+                let checkCity = await Doctors.query().where('city', 'like', `%${city}%`);
+                if (specializationId.length > 0 || checkCity.length > 0) {
+                    let drIds = [];
+                    for (let i = 0; i < specializationId.length; i++) {
+                        let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[i].id);
+                        if (checkSpecialization.length > 0) {
+                            for (let j = 0; j < checkSpecialization.length; j++) {
+                                drIds.push(checkSpecialization[j].dr_id);
+                            }
+                        }
                     }
-                    let drIds = checkSpecialization.map((dr) => dr.dr_id);
 
-                    const data = await Doctors.query()
+                    let doctorsData = await Doctors.query()
+                        .where('name', 'like', `%${name_or_specil}%`)
+
+                    if (doctorsData.length > 0) {
+                        for (let i = 0; i < doctorsData.length; i++) {
+                            drIds.push(doctorsData[i].id);
+                        }
+                    }
+
+                    let checkDoctor = await Doctors.query()
                         .whereIn('id', drIds)
                         .andWhere('city', 'like', `%${city}%`)
                         .withGraphFetched('[ awards ]');
-                    if (data.length === 0) {
-                        return `No Doctor found with specialization ${specialization} and city ${city}`;
+
+                    if (checkDoctor.length === 0) {
+                        return [];
                     }
-                    let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+                    let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(checkDoctor);
                     return modifiedData;
                 }
-                else
-                    return [];
+                return [];
+
             }
 
-            // city and name
-            else if (city !== undefined && city !== null && name !== undefined && name !== null) {
-                const data = await Doctors.query()
-                    .where('city', 'like', `%${city}%`)
-                    .andWhere('name', 'like', `%${name}%`)
-                    .withGraphFetched('[ awards ]');
-                if (data.length === 0) {
-                    return `No Doctor found with city ${city} and name ${name}`;
-                }
-                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
-                return modifiedData;
-            }
+            // name_or_specil
+            else if (name_or_specil !== undefined && name_or_specil !== null) {
+                // console.log(name_or_specil, 'name_or_specil')
+                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${name_or_specil}%`);
+                let checkDoctor = await Doctors.query().where('name', 'like', `%${name_or_specil}%`)
+                if (specializationId.length > 0 || checkDoctor.length > 0) {
+                    let drIds = [];
+                    for (let i = 0; i < specializationId.length; i++) {
+                        let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[i].id);
+                        if (checkSpecialization.length > 0) {
+                            for (let j = 0; j < checkSpecialization.length; j++) {
+                                drIds.push(checkSpecialization[j].dr_id);
+                            }
+                        }
+                    }
 
-            //specialization
-            else if (specialization !== undefined && specialization !== null) {
-                let specializationId = await specializationsMasterAll.query().where('specializations', 'like', `%${specialization}%`);
-                if (specializationId.length === 0) {
-                    return `No specialization found with name ${specialization}`;
-                }
-                let checkSpecialization = await DoctorsSpecialization.query().where('specialization_id', specializationId[0].id);
-                if (checkSpecialization.length === 0) {
-                    return `No Doctor found with specialization ${specialization}`;
-                }
+                    if (checkDoctor.length > 0) {
+                        for (let i = 0; i < checkDoctor.length; i++) {
+                            drIds.push(checkDoctor[i].id);
+                        }
+                    }
 
-                let drIds = checkSpecialization.map((dr) => dr.dr_id);
-                const data = await Doctors.query()
-                    .whereIn('id', drIds)
-                    .withGraphFetched('[ awards ]');
-                if (data.length === 0) {
-                    return `No Doctor found with specialization ${specialization}`;
+                    let getDoctor = await Doctors.query()
+                        .whereIn('id', drIds)
+                        .withGraphFetched('[ awards ]');
+
+                    if (getDoctor.length === 0) {
+                        return [];
+                    }
+                    let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(getDoctor);
+                    return modifiedData;
                 }
-                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
-                return modifiedData;
+                return [];
             }
 
             //city
             else if (city !== undefined && city !== null) {
+                console.log(city, 'city')
                 const data = await Doctors.query()
                     .where('city', 'like', `%${city}%`)
                     .withGraphFetched('[ awards ]');
                 if (data.length === 0) {
-                    return `No Doctor found with city ${city}`;
-                }
-                let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
-                return modifiedData;
-            }
-
-            //name
-            else if (name !== undefined && name !== null) {
-                const data = await Doctors.query().where('name', 'like', `%${name}%`).withGraphFetched('[ awards ]');
-                if (data.length === 0) {
-                    return `No Doctor found with name ${name}`;
+                    return [];
                 }
                 let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
                 return modifiedData;
