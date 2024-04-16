@@ -326,15 +326,14 @@ appEmitter.on('ready', ({ server }) => {
             tags: ['api'],
             validate: {
                 query: Joi.object({
-                    name: Joi.string(),
-                    specialization: Joi.string(),
+                    name_or_specil: Joi.string(),
                     city: Joi.string(),
                 })
             },
             handler: async (request, h) => {
-                const { name, specialization, city } = request.query;
+                const { name_or_specil, city } = request.query;
                 try {
-                    const data = await doctorsService.getDoctorByName(name, specialization, city);
+                    const data = await doctorsService.getDoctorByName(name_or_specil, city);
                     logger.info('Doctor details fetched successfully');
                     return h.response(data);
                 } catch (error) {
