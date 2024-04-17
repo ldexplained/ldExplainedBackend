@@ -21,6 +21,7 @@ const degreesMasterAll = require('../models/degreesMasterAll');
 const collegeMasterAll = require('../models/collegeMasterAll');
 const hospitalMasterAll = require('../models/hospitalMasterAll');
 const DoctorsLeave = require('../models/doctorsLeave');
+const clinicMasterAll = require('../models/clinicMasterAll');
 
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
@@ -1179,6 +1180,20 @@ module.exports = class DoctorsServices extends Model {
     async getServices() {
         try {
             const data = await servicesMasterAll.query();
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getClinics() {
+        try {
+            const data = await clinicMasterAll.query();
             if (data.length === 0) {
                 return [];
             }
