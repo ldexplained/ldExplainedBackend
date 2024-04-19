@@ -18,9 +18,7 @@ class DoctorsClinic extends Model {
     }
 
     static get relationMappings() {
-        // const DoctorsClinic = require('./doctorsClinic');
         const DoctorsClinicImages = require('./doctorsClinicImages');
-        // const DoctorsClinicIds = require('./doctorsClinicIds');
 
         return {
             clinic: {
@@ -28,7 +26,7 @@ class DoctorsClinic extends Model {
                 modelClass: DoctorsClinicImages,
                 join: {
                     from: 'doctors_clinic.id',
-                    to: 'doctors_clinic_ids.clinic_id',
+                    to: 'doctors_clinic_images.clinic_id',
                 },
             },
         }

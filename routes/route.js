@@ -757,4 +757,24 @@ appEmitter.on('ready', ({ server }) => {
         }
     });
 
+    server.route({
+        method: 'GET',
+        path: '/dropdown/clinics',
+        options: {
+            description: 'Get all clinics details',
+            tags: ['api'],
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.getClinics();
+                    logger.info('Clinics details fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching clinics details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
 });
