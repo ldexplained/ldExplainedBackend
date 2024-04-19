@@ -1189,4 +1189,18 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
+
+    async getClinics() {
+        try {
+            const data = await DoctorsClinic.query().withGraphFetched('[ clinic ]');
+            if (data.length === 0) {
+                return [];
+            }
+            return data;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
 }
