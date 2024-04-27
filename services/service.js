@@ -993,11 +993,50 @@ module.exports = class DoctorsServices extends Model {
             }
             let finalData = [];
             for (let dr of data) {
-                let patient_name = await User.query().select('name').where('id', dr.parent_user_id);
-                dr['patient_name'] = patient_name[0].name;
+                let parent_name = await User.query().select('name').where('id', dr.parent_user_id);
+                dr['parent_name'] = parent_name[0].name;
                 let doctor = await Doctors.query().where('id', dr.dr_id);
                 finalData.push({ ...dr, doctor });
             }
+            return finalData;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async getAllBookingSlotsByUserId(user_id){
+        try {
+            let checkUser = await User.query().where('id', user_id);
+            if (checkUser.length === 0) {
+                return `No Parent found with id ${user_id}`;
+            }
+
+            const bookingDetails = await DoctorsBookingSlot.query().where('parent_user_id', user_id);
+            if (bookingDetails.length === 0) {
+                return [];
+            }
+            let finalData = [];
+            for (let data of bookingDetails) {
+                let parent_name = await User.query().select('name').where('id', data.parent_user_id);
+                data['parent_name'] = parent_name[0].name;
+                let doctor = await Doctors.query().where('id', data.dr_id);
+                data['expert_name'] = doctor[0].name;
+
+                let childName = await Child.query().where('id', data.child_id);
+                data['child_name'] = childName[0].name;
+                finalData.push({ ...data });
+            }
+
+            let uniqueChildIds = [];
+            for (let ch_id of finalData){
+                if (!uniqueChildIds.includes(ch_id.child_id)){
+                    uniqueChildIds.push(ch_id.child_id)
+                }
+            }
+            let myChildren = await Child.query().whereIn('id', uniqueChildIds);
+            finalData.push({ myChildren: myChildren });
             return finalData;
         }
         catch (error) {
