@@ -17,16 +17,23 @@ const appEmitter = new AppEmitter();
 async function init() {
   const server = Hapi.server({
     port: process.env.PORT || 8000,
+    // routes: {
+    //   // cors: {
+    //   //   // "origin": ["Access-Control-Allow-Origin", "192.168.1.13:4200"],
+    //   //   // Allow requests from any origin (global access)
+    //   //   origin: ['*'],
+    //   //   headers: ['Accept', 'Content-Type'],
+    //   //   additionalHeaders: ['cache-control', 'x-requested-with']
+    //   // }
+    //   "cors": true
+    // }
     routes: {
-      // cors: {
-      //   // "origin": ["Access-Control-Allow-Origin", "192.168.1.13:4200"],
-      //   // Allow requests from any origin (global access)
-      //   origin: ['*'],
-      //   headers: ['Accept', 'Content-Type'],
-      //   additionalHeaders: ['cache-control', 'x-requested-with']
-      // }
-      "cors": true
-    }
+      cors: {
+          origin: ['*'], // an array of origins or 'ignore'
+          headers: ['Accept', 'Authorization', 'Content-Type', 'If-None-Match', 'Accept-language'], // all default apart from Accept-language
+          additionalHeaders: ['cache-control', 'x-requested-with', 'Access-Control-Allow-Origin']
+      }
+  },
   });
 
   const oauth2Client = new google.auth.OAuth2(
