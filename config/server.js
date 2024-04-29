@@ -34,6 +34,7 @@ async function init() {
           additionalHeaders: ['cache-control', 'x-requested-with', 'Access-Control-Allow-Origin']
       }
   },
+
   });
 
   const oauth2Client = new google.auth.OAuth2(
