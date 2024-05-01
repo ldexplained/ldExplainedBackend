@@ -920,35 +920,13 @@ module.exports = class DoctorsServices extends Model {
             }
             let drIds = drFav.map((dr) => dr.dr_id);
 
-            const data = await Doctors.query().whereIn('id', drIds).withGraphFetched('[degrees, awards, services, specialization, experience]');
+            const data = await Doctors.query().whereIn('id', drIds).withGraphFetched('[ awards ]');
             if (data.length === 0) {
                 return [];
             }
-            let finalData = [];
-            for (let dr of data) {
-                let clinicDetails = await DoctorsClinicIds.query().where('dr_id', dr.id);
-                let clinicIds = clinicDetails.map((clinic) => clinic.clinic_id);
 
-                let clinic = await DoctorsClinic.query().whereIn('id', clinicIds);
-                let clinicImages = await DoctorsClinicImages.query().whereIn('clinic_id', clinicIds);
-
-                for (let i = 0; i < clinicImages.length; i++) {
-                    clinicImages[i].clinic_images_link = JSON.parse(clinicImages[i].clinic_images_link);
-                }
-
-                let specialization = [];
-                for (let i = 0; i < dr.specialization.length; i++) {
-                    specialization.push(JSON.parse(dr.specialization[i].specialization));
-                }
-
-                let services = [];
-                for (let i = 0; i < dr.services.length; i++) {
-                    services.push(JSON.parse(dr.services[i].service_name));
-                }
-
-                finalData.push({ ...dr, specialization, clinic, clinicImages, services });
-            }
-            return finalData;
+            let modifiedData = await this.getSpelizationServicesDegreeHospitalsDetails(data);
+            return modifiedData;
         }
         catch (error) {
             logger.error(JSON.stringify(error));
