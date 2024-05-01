@@ -546,6 +546,24 @@ appEmitter.on('ready', ({ server }) => {
     });
 
     server.route({
+        method: 'GET',
+        path: '/bookingSlots/userId',
+        options: {
+            description: 'Get ALL booking slots by parent_user_id',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            handler: async (request, h) => {
+                const parent_user_id = request.auth.credentials.id;
+                const data = await doctorsService.getAllBookingSlotsByUserId(parent_user_id);
+                logger.info('Upcoming booking slots fetched successfully');
+                return h.response(data);
+            }
+        }
+    });
+
+    server.route({
         method: 'POST',
         path: '/rating/parents',
         options: {
@@ -641,9 +659,9 @@ appEmitter.on('ready', ({ server }) => {
 
     server.route({
         method: 'GET',
-        path: '/children/parents',
+        path: '/user/children',
         options: {
-            description: 'Get all children details by parent_user_id',
+            description: 'Get user profile with children details by parent_user_id',
             tags: ['api'],
             auth: {
                 strategy: 'jwt',
@@ -651,7 +669,7 @@ appEmitter.on('ready', ({ server }) => {
             handler: async (request, h) => {
                 const user_id = request.auth.credentials.id;
                 const data = await doctorsService.getChildrenByParentUserId(user_id);
-                logger.info('Children details fetched successfully');
+                logger.info('Get user profile with children details by parent_user_id');
                 return h.response(data);
             }
         }
