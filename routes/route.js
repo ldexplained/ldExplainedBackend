@@ -667,10 +667,55 @@ appEmitter.on('ready', ({ server }) => {
                 strategy: 'jwt',
             },
             handler: async (request, h) => {
-                const user_id = request.auth.credentials.id;
-                const data = await doctorsService.getChildrenByParentUserId(user_id);
-                logger.info('Get user profile with children details by parent_user_id');
-                return h.response(data);
+                try {
+                    const user_id = request.auth.credentials.id;
+                    const data = await doctorsService.getChildrenByParentUserId(user_id);
+                    logger.info('Get user profile with children details by parent_user_id');
+                    return h.response(data);
+                } catch (error) {
+                    logger.error('Error fetching user profile with children details:', error);
+                    return h.response({ error: 'Error fetching user profile with children details' }).code(500);
+                }
+            }
+        }
+    });
+
+
+    server.route({
+        method: 'PUT',
+        path: '/user/update-profile',
+        options: {
+            description: 'Update user profile',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            validate: {
+                payload: Joi.object({
+                    name: Joi.string().max(50),
+                    email: Joi.string().email().max(100),
+                    contact: Joi.string().max(15),
+                    last_name: Joi.string().max(255),
+                    dob: Joi.date(),
+                    blood_group: Joi.string(),
+                    address: Joi.string(),
+                    city: Joi.string(),
+                    state: Joi.string(),
+                    country: Joi.string(),
+                    zipcodes: Joi.string()
+                }),
+            },
+            handler: async (request, h) => {
+                try {
+                    const user_id = request.auth.credentials.id;
+                    const data = await doctorsService.updateUserById(user_id, request.payload);
+                    logger.info('User updated successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while updating user details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
             }
         }
     });
