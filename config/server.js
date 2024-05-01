@@ -83,7 +83,7 @@ async function init() {
     if (checkRole.role !== undefined && checkRole.role !== null) {
       user.role = checkRole.role;
     } else {
-      user.role = null;
+      user.role = [];
     }
     return { isValid: true, credentials: user };
   };

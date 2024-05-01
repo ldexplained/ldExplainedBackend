@@ -86,6 +86,8 @@ module.exports = class DoctorsServices extends Model {
 
             if (checkRoles.length !== 0) {
                 userDetails['role'] = checkRoles[0].role;
+            }else{
+                userDetails['role'] = [];
             }
 
             const secretKey = process.env.JWT_SECRET;
@@ -1151,6 +1153,35 @@ module.exports = class DoctorsServices extends Model {
                 finalData.push({ ...checkUser[0] });
                 finalData.push({ childrenDetails: data });
                 return finalData;
+            }
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    async updateUserById(user_id, payload) {
+        try {
+            let checkUser = await User.query().where('id', user_id);
+            if (checkUser.length === 0) {
+                return `No User found with id ${user_id}`;
+            }
+            else {
+                if (payload.email !== undefined && payload.email !== null) {
+                    if (checkUser[0].email !== payload.email) {
+                        return {
+                            statusCode: 400,
+                            message: `Email cannot be updated`
+                        };
+                    }
+                }
+                payload['last_updated'] = new Date().toISOString();
+                await User.query().patchAndFetchById(user_id, payload);
+                return {
+                    statusCode: 200,
+                    message: `User updated successfully with id ${user_id}`
+                };
             }
         }
         catch (error) {

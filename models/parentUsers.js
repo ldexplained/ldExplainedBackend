@@ -14,11 +14,19 @@ class User extends Model {
             name: Joi.string().max(50).required(),
             email: Joi.string().email().max(100).required(),
             contact: Joi.string().max(15).required(),
-            password: Joi.string().max(100).required(),
-            user_type: Joi.string().valid('A', 'P').required(),
-            status: Joi.string().valid('A', 'P', 'S').required(),
-            dated: Joi.date().iso().required(),
+            password: Joi.string().max(100),
+            user_type: Joi.string(),
+            status: Joi.string(),
+            dated: Joi.date().iso(),
             last_updated: Joi.date().iso().required(),
+            last_name: Joi.string().max(255),
+            dob: Joi.date().iso(),
+            blood_group: Joi.string(),
+            address: Joi.string(),
+            city: Joi.string(),
+            state: Joi.string(),
+            country: Joi.string(),
+            zipcodes: Joi.string()
         });
     }
 }
