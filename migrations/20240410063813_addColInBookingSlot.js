@@ -5,6 +5,8 @@ exports.up = async (knex) => {
         table.integer('clinic_id'),
         table.string('event_id'),
         table.datetime('booking_date_for')
+        table.integer('service_id').unsigned().references('id').inTable('services_master_all')
+        table.integer('amount')
     });
 };
 
@@ -14,6 +16,8 @@ exports.down = async (knex) => {
         table.dropColumn('address'),
         table.dropColumn('clinic_id')
         table.dropColumn('event_id'),
-        table.dropColumn('booking_date_for')
+        table.dropColumn('booking_date_for'),
+        table.dropColumn('service_id'),
+        table.dropColumn('amount')
     });
 };

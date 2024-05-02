@@ -20,6 +20,8 @@ class DoctorsBookingSlot extends Model {
             end_time: Joi.date().required(),
             purpose: Joi.string().min(1).required(),
             booking_date_for: Joi.date().required(),
+            service_id: Joi.number().integer().greater(0).required(),
+            amount: Joi.number().integer().greater(0).required(),
 
 
         });

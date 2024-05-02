@@ -63,6 +63,7 @@ appEmitter.on('ready', ({ server }) => {
                     mode: Joi.valid('home', 'online', 'in_clinic').required(),
                     address: Joi.string(),
                     clinic_id: Joi.number().integer(),
+                    service_id: Joi.number().integer().required(),
                     appointments: Joi.array().items(
                         Joi.object({
                             start_time: Joi.string().isoDate().required(),
@@ -714,6 +715,32 @@ appEmitter.on('ready', ({ server }) => {
                 }
                 catch (error) {
                     logger.error('An error occurred while updating user details:', error);
+                    return h.response({ error: 'An internal server error occurred' }).code(500);
+                }
+            }
+        }
+    });
+
+    server.route({
+        method: 'GET',
+        path: '/dropdown/services/{dr_id}',
+        options: {
+            description: 'Get all services of a doctor by dr_id',
+            tags: ['api'],
+            validate: {
+                params: Joi.object({
+                    dr_id: Joi.number().required()
+                })
+            },
+            handler: async (request, h) => {
+                const { dr_id } = request.params;
+                try {
+                    const data = await doctorsService.getServicesByDrId(dr_id);
+                    logger.info('Services of a doctor fetched successfully');
+                    return h.response(data);
+                }
+                catch (error) {
+                    logger.error('An error occurred while fetching services of a doctor:', error);
                     return h.response({ error: 'An internal server error occurred' }).code(500);
                 }
             }
