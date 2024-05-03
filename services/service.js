@@ -1003,6 +1003,17 @@ module.exports = class DoctorsServices extends Model {
                 data['parent_name'] = parent_name[0].name;
                 let doctor = await Doctors.query().where('id', data.dr_id);
                 data['expert_name'] = doctor[0].name;
+                data['profile'] = doctor[0].profile_link;
+
+                let specialization = await DoctorsSpecialization.query().where('dr_id', data.dr_id);
+                let specializationArray = [];
+                if (specialization.length > 0) {
+                    for (let spec of specialization) {
+                        let specName = await specializationsMasterAll.query().where('id', spec.specialization_id);
+                        specializationArray.push(specName[0].specializations);
+                    }
+                }
+                data['specialization'] = specializationArray;
 
                 let childName = await Child.query().where('id', data.child_id);
                 data['child_name'] = childName[0].name;
