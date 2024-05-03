@@ -126,6 +126,14 @@ module.exports = class DoctorsServices extends Model {
             throw new Error('User or Doctor not found');
         }
 
+        let checkService = await DoctorsService.query().where('dr_id', appointmentDetails.dr_id).andWhere('service_id', appointmentDetails.service_id);
+        if (checkService.length === 0) {
+            return `No service found with service_id ${appointmentDetails.service_id} for doctor id ${appointmentDetails.dr_id}`;
+        }
+
+        let drFee = checkService[0].consultation_fee + checkService[0].booking_fee;
+        appointmentDetails['amount'] = drFee;
+
         if (appointmentDetails.mode === 'online') {
             const appointments = appointmentDetails.appointments;
             delete appointmentDetails.appointments;
@@ -251,6 +259,9 @@ module.exports = class DoctorsServices extends Model {
             else {
 
                 let clinic = await DoctorsClinic.query().where('id', appointmentDetails.clinic_id);
+                if (clinic.length === 0) {
+                    return `No clinic found with clinic_id ${appointmentDetails.clinic_id} please try with another clinic id`;
+                }
 
                 const appointments = appointmentDetails.appointments;
                 delete appointmentDetails.appointments;
@@ -1167,6 +1178,32 @@ module.exports = class DoctorsServices extends Model {
             return error;
         }
     }
+
+    async getServicesByDrId(dr_id) {
+        try {
+            let checkDoctor = await Doctors.query().where('id', dr_id);
+            if (checkDoctor.length === 0) {
+                return `No Doctor found with id ${dr_id}`;
+            }
+
+            let services = await DoctorsService.query().where('dr_id', dr_id);
+            if (services.length === 0) {
+                return [];
+            }
+
+            let finalData = [];
+            for (let service of services) {
+                let serviceDetails = await servicesMasterAll.query().where('id', service.service_id);
+                finalData.push({ ...serviceDetails[0], consultation_fee: service.consultation_fee, booking_fee: service.booking_fee });
+            }
+            return finalData;
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+        
 
     async getSpecializations() {
         try {
