@@ -44,6 +44,55 @@ appEmitter.on('ready', ({ server }) => {
         }
     });
 
+    server.route({
+        method: 'POST',
+        path: '/google/simple-login',
+        options: {
+            description: 'Login with email and password',
+            tags: ['api'],
+            validate: {
+                payload: Joi.object({
+                    email: Joi.string().email().required(),
+                    password: Joi.string().required()
+                })
+            },
+            handler: async (request, h) => {
+                const data = await doctorsService.simpleLogin(request.payload);
+                logger.info('User logged in successfully');
+                return h.response(data);
+            }
+        }
+    });
+
+    server.route({
+        method: 'PUT',
+        path: '/google/update-password',
+        options: {
+            description: 'Update password with JWT authentication',
+            tags: ['api'],
+            auth: {
+                strategy: 'jwt',
+            },
+            validate: {
+                payload: Joi.object({
+                    old_password: Joi.string().required(),
+                    new_password: Joi.string().required(),
+                    confirm_password: Joi.string().required()
+                })
+            },
+            handler: async (request, h) => {
+                try {
+                    const data = await doctorsService.updatePassword(request.auth.credentials.id, request.payload);
+                    logger.info('Password updated successfully');
+                    return h.response(data);
+                } catch (error) {
+                    logger.error('Error updating password:', error);
+                    return h.response({ error: 'Error updating password' }).code(500);
+                }
+            }
+        }
+    });
+
 
     server.route({
         method: 'POST',

@@ -117,6 +117,93 @@ module.exports = class DoctorsServices extends Model {
         // console.log(res.data); // User profile information
     }
 
+    async simpleLogin(payload) {
+        try {
+            const { email, password } = payload;
+            let checkUser = await User.query().where('email', email);
+            if (checkUser.length === 0) {
+                return `No user found with this email ${email}`;
+            }
+
+            const user = await User.query().where('email', email).where('password', password);
+            if (user.length === 0) {
+                return 'Invalid email or password';
+            }
+
+            let checkRoles = await Roles.query().where('email', email);
+
+            const userDetails = {
+                id: user[0].id,
+                email: user[0].email,
+            };
+
+            if (checkRoles.length !== 0) {
+                userDetails['role'] = checkRoles[0].role;
+            } else {
+                userDetails['role'] = [];
+            }
+
+            const secretKey = process.env.JWT_SECRET;
+            const options = {
+                algorithm: 'HS256',
+                expiresIn: '1d',
+            };
+
+            // Create the JWT
+            const jwtToken = jwt.sign(userDetails, secretKey, options);
+            return {
+                statusCode: 200,
+                message: 'user Login successfully',
+                token: jwtToken
+            };
+        }
+        catch (error) {
+            logger.error(JSON.stringify(error));
+            return error;
+        }
+    }
+
+    // updatePassword
+    async updatePassword(id, passwdDetails) {
+        try {
+            const checkUser = await User.query().findById(id);
+    
+            if (!checkUser) {
+                return `No user found with id ${id}`;
+            }
+    
+            const checkPasswd = await User.query().findById(id).andWhere('password', passwdDetails.old_password);
+            if (checkPasswd === undefined || checkPasswd === null) {
+                return {
+                    statusCode: 400,
+                    message: 'Old password is incorrect'
+                };
+            }
+            if (checkPasswd.password !== passwdDetails.old_password) {
+                return {
+                    statusCode: 400,
+                    message: 'Old password is incorrect'
+                };
+            }
+            if (passwdDetails.new_password !== passwdDetails.confirm_password) {
+                return {
+                    statusCode: 400,
+                    message: 'New password and confirm password should be the same'
+                };
+            }
+
+            await User.query().findById(id).patch({ password: passwdDetails.new_password });
+    
+            return {
+                statusCode: 200,
+                message: 'Password updated successfully'
+            };
+        } catch (error) {
+            console.log(error, 'error')
+            logger.error(error);
+            return error;
+        }
+    }
 
     //---------------------------------------------------------------------
     async scheduleAppointments(appointmentDetails) {
